@@ -6,11 +6,6 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 
-/**
- * Film.
- */
-//@Getter
-//@Setter
 @Data
 public class Film {
     private Integer id;
