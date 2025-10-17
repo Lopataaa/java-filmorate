@@ -59,4 +59,3 @@ public class Film {
         this.duration = duration;
     }
 }
-}
