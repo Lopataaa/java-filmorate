@@ -16,12 +16,10 @@ class FilmControllerTest {
 
     private FilmController filmController;
 
-    // Константы для тестовых данных
     private static final String FILM_NAME = "Test Film";
     private static final String FILM_DESCRIPTION = "Test Description";
     private static final LocalDate FILM_RELEASE_DATE = LocalDate.of(2000, 1, 1);
     private static final Integer FILM_DURATION = 120;
-    private static final LocalDate FIRST_FILM_DATE = LocalDate.of(1895, 12, 28);
     private static final Integer NON_EXISTENT_ID = 9999;
 
     @BeforeEach
@@ -41,13 +39,13 @@ class FilmControllerTest {
     @Test
     @DisplayName("Создание фильма с валидными данными должно быть успешным")
     void test_Create_ValidFilmData_ShouldCreateFilm() {
-        // Given - валидные данные фильма
+        // Given
         Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, FILM_DURATION);
 
-        // When - создаем фильм
+        // When
         Film result = filmController.create(film);
 
-        // Then - фильм создан с корректными данными
+        // Then
         assertNotNull(result.getId(), "Фильм должен получить ID");
         assertEquals(FILM_NAME, result.getName(), "Название должно совпадать");
         assertEquals(FILM_DESCRIPTION, result.getDescription(), "Описание должно совпадать");
@@ -56,10 +54,10 @@ class FilmControllerTest {
     @Test
     @DisplayName("Создание фильма с пустым названием должно вызывать исключение")
     void test_Create_EmptyFilmName_ShouldThrowValidationException() {
-        // Given - фильм с пустым названием
+        // Given
         Film film = createFilm("", FILM_DESCRIPTION, FILM_RELEASE_DATE, FILM_DURATION);
 
-        // When & Then - должно быть выброшено исключение
+        // When & Then
         assertThrows(ValidationException.class, () -> filmController.create(film),
                 "Должно быть выброшено ValidationException при пустом названии");
     }
@@ -67,11 +65,11 @@ class FilmControllerTest {
     @Test
     @DisplayName("Создание фильма с описанием длиннее 200 символов должно вызывать исключение")
     void test_Create_FilmDescriptionExceeds200Chars_ShouldThrowValidationException() {
-        // Given - описание длиной 201 символ
+        // Given
         String longDescription = "A".repeat(201);
         Film film = createFilm(FILM_NAME, longDescription, FILM_RELEASE_DATE, FILM_DURATION);
 
-        // When & Then - должно быть выброшено исключение
+        // When & Then
         assertThrows(ValidationException.class, () -> filmController.create(film),
                 "Должно быть выброшено ValidationException при описании длиннее 200 символов");
     }
@@ -79,11 +77,11 @@ class FilmControllerTest {
     @Test
     @DisplayName("Создание фильма с датой релиза до 1895 года должно вызывать исключение")
     void test_Create_FilmReleaseDateBefore1895_ShouldThrowValidationException() {
-        // Given - дата релиза до первого фильма
-        LocalDate earlyDate = LocalDate.of(1890, 1, 1);
+        // Given
+        LocalDate earlyDate = LocalDate.of(1890, 1, 9);
         Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, earlyDate, FILM_DURATION);
 
-        // When & Then - должно быть выброшено исключение
+        // When & Then
         assertThrows(ValidationException.class, () -> filmController.create(film),
                 "Должно быть выброшено ValidationException при дате релиза до 1895 года");
     }
@@ -91,10 +89,10 @@ class FilmControllerTest {
     @Test
     @DisplayName("Создание фильма с отрицательной продолжительностью должно вызывать исключение")
     void test_Create_FilmWithNegativeDuration_ShouldThrowValidationException() {
-        // Given - отрицательная продолжительность
-        Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, -10);
+        // Given
+        Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, -103);
 
-        // When & Then - должно быть выброшено исключение
+        // When & Then
         assertThrows(ValidationException.class, () -> filmController.create(film),
                 "Должно быть выброшено ValidationException при отрицательной продолжительности");
     }
@@ -102,11 +100,11 @@ class FilmControllerTest {
     @Test
     @DisplayName("Обновление несуществующего фильма должно вызывать исключение")
     void test_Update_NonExistentFilm_ShouldThrowValidationException() {
-        // Given - несуществующий ID фильма
+        // Given
         Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, FILM_DURATION);
         film.setId(NON_EXISTENT_ID);
 
-        // When & Then - должно быть выброшено исключение
+        // When & Then
         assertThrows(ValidationException.class, () -> filmController.update(film),
                 "Должно быть выброшено ValidationException при обновлении несуществующего фильма");
     }

@@ -39,13 +39,13 @@ class UserControllerTest {
     @Test
     @DisplayName("Создание пользователя с валидными данными должно быть успешным")
     void test_Create_ValidUserData_ShouldCreateUser() {
-        // Given - валидные данные пользователя
+        // Given
         User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
 
-        // When - создаем пользователя
+        // When
         User result = userController.create(user);
 
-        // Then - пользователь создан с корректными данными
+        // Then
         assertNotNull(result.getId(), "Пользователь должен получить ID");
         assertEquals(USER_EMAIL, result.getEmail(), "Email должен совпадать");
         assertEquals(USER_LOGIN, result.getLogin(), "Логин должен совпадать");
@@ -55,10 +55,10 @@ class UserControllerTest {
     @Test
     @DisplayName("Создание пользователя с пустым email должно вызывать исключение")
     void test_Create_UserWithEmptyEmail_ShouldThrowValidationException() {
-        // Given - пустой email
+        // Given
         User user = createUser("", USER_LOGIN, USER_NAME, USER_BIRTHDAY);
 
-        // When & Then - должно быть выброшено исключение
+        // When & Then
         assertThrows(ValidationException.class, () -> userController.create(user),
                 "Должно быть выброшено ValidationException при пустом email");
     }
@@ -66,10 +66,10 @@ class UserControllerTest {
     @Test
     @DisplayName("Создание пользователя с email без символа @ должно вызывать исключение")
     void test_Create_UserWithInvalidEmail_ShouldThrowValidationException() {
-        // Given - email без символа @
+        // Given
         User user = createUser("invalid-email", USER_LOGIN, USER_NAME, USER_BIRTHDAY);
 
-        // When & Then - должно быть выброшено исключение
+        // When & Then
         assertThrows(ValidationException.class, () -> userController.create(user),
                 "Должно быть выброшено ValidationException при email без символа @");
     }
@@ -77,10 +77,10 @@ class UserControllerTest {
     @Test
     @DisplayName("Создание пользователя с логином содержащим пробелы должно вызывать исключение")
     void test_Create_UserWithSpacesInLogin_ShouldThrowValidationException() {
-        // Given - логин с пробелами
+        // Given
         User user = createUser(USER_EMAIL, "login with spaces", USER_NAME, USER_BIRTHDAY);
 
-        // When & Then - должно быть выброшено исключение
+        // When & Then
         assertThrows(ValidationException.class, () -> userController.create(user),
                 "Должно быть выброшено ValidationException при логине с пробелами");
     }
@@ -88,13 +88,13 @@ class UserControllerTest {
     @Test
     @DisplayName("Создание пользователя с пустым именем должно использовать логин как имя")
     void test_Create_UserWithEmptyName_ShouldUseLoginAsName() {
-        // Given - пустое имя пользователя
+        // Given
         User user = createUser(USER_EMAIL, USER_LOGIN, "", USER_BIRTHDAY);
 
-        // When - создаем пользователя
+        // When
         User result = userController.create(user);
 
-        // Then - имя должно быть равно логину
+        // Then
         assertEquals(USER_LOGIN, result.getName(),
                 "При пустом имени должно использоваться значение логина");
     }
@@ -102,11 +102,11 @@ class UserControllerTest {
     @Test
     @DisplayName("Создание пользователя с датой рождения в будущем должно вызывать исключение")
     void test_Create_UserWithFutureBirthday_ShouldThrowValidationException() {
-        // Given - дата рождения в будущем
+        // Given
         LocalDate futureDate = LocalDate.now().plusDays(1);
         User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, futureDate);
 
-        // When & Then - должно быть выброшено исключение
+        // When & Then
         assertThrows(ValidationException.class, () -> userController.create(user),
                 "Должно быть выброшено ValidationException при дате рождения в будущем");
     }
@@ -114,11 +114,11 @@ class UserControllerTest {
     @Test
     @DisplayName("Обновление несуществующего пользователя должно вызывать исключение")
     void test_Update_NonExistentUser_ShouldThrowValidationException() {
-        // Given - несуществующий ID пользователя
+        // Given
         User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
         user.setId(NON_EXISTENT_ID);
 
-        // When & Then - должно быть выброшено исключение
+        // When & Then
         assertThrows(ValidationException.class, () -> userController.update(user),
                 "Должно быть выброшено ValidationException при обновлении несуществующего пользователя");
     }
