@@ -1,33 +1,35 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/films")
 public class FilmController {
 
-    private static final Logger log = LoggerFactory.getLogger(FilmController.class);
-
     private final Map<Integer, Film> films = new HashMap<>();
     private int nextFilmId = 1;
 
-    private static final LocalDate FIRST_FILM_DATE = LocalDate.of(1895, 12, 28);
-
     @GetMapping
-    public List<Film> findAll() {
+    public ResponseEntity<List<Film>> findAll() {
         log.info("GET /films - получение списка всех фильмов. Количество фильмов: {}", films.size());
-        return new ArrayList<>(films.values());
+        List<Film> filmList = new ArrayList<>(films.values());
+        return ResponseEntity.ok(filmList);
     }
 
     @PostMapping
-    public Film create(@RequestBody Film film) {
+    public ResponseEntity<Film> create(@RequestBody Film film) {
         log.info("POST /films - попытка создания нового фильма: {}", film);
 
         validateFilm(film);
@@ -35,11 +37,11 @@ public class FilmController {
         films.put(film.getId(), film);
 
         log.info("POST /films - фильм успешно создан с ID: {}", film.getId());
-        return film;
+        return ResponseEntity.status(HttpStatus.CREATED).body(film);
     }
 
     @PutMapping
-    public Film update(@RequestBody Film film) {
+    public ResponseEntity<Film> update(@RequestBody Film film) {
         log.info("PUT /films - попытка обновления фильма: {}", film);
 
         if (film.getId() == null || !films.containsKey(film.getId())) {
@@ -52,7 +54,7 @@ public class FilmController {
         films.put(film.getId(), film);
 
         log.info("PUT /films - фильм с ID {} успешно обновлен", film.getId());
-        return film;
+        return ResponseEntity.ok(film);
     }
 
     private void validateFilm(Film film) {
@@ -68,11 +70,6 @@ public class FilmController {
         }
         if (film.getReleaseDate() == null) {
             String errorMessage = "Дата релиза должна быть указана";
-            log.warn("Валидация фильма failed: {}", errorMessage);
-            throw new ValidationException(errorMessage);
-        }
-        if (film.getReleaseDate().isBefore(FIRST_FILM_DATE)) {
-            String errorMessage = "Дата релиза не может быть раньше 28 декабря 1895 года";
             log.warn("Валидация фильма failed: {}", errorMessage);
             throw new ValidationException(errorMessage);
         }

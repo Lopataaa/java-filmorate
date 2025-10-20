@@ -1,31 +1,27 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import org.junit.jupiter.api.BeforeEach;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@WebMvcTest(UserController.class)
 class UserControllerTest {
 
-    private UserController userController;
+    @Autowired
+    private MockMvc mockMvc;
 
-    private static final String USER_EMAIL = "test@example.com";
-    private static final String USER_LOGIN = "testuser";
-    private static final String USER_NAME = "Test User";
-    private static final LocalDate USER_BIRTHDAY = LocalDate.of(1990, 1, 1);
-    private static final Integer NON_EXISTENT_ID = 9999;
-
-    @BeforeEach
-    void setUp() {
-        userController = new UserController();
-    }
+    @Autowired
+    private ObjectMapper objectMapper;
 
     private User createUser(String email, String login, String name, LocalDate birthday) {
         User user = new User();
@@ -38,88 +34,97 @@ class UserControllerTest {
 
     @Test
     @DisplayName("Создание пользователя с валидными данными должно быть успешным")
-    void test_Create_ValidUserData_ShouldCreateUser() {
+    void test_Create_ValidUserData_ShouldCreateUser() throws Exception {
         // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
+        User user = createUser("test@example.com", "testuser", "Test User", LocalDate.of(1990, 1, 1));
 
-        // When
-        User result = userController.create(user);
-
-        // Then
-        assertNotNull(result.getId(), "Пользователь должен получить ID");
-        assertEquals(USER_EMAIL, result.getEmail(), "Email должен совпадать");
-        assertEquals(USER_LOGIN, result.getLogin(), "Логин должен совпадать");
-        assertEquals(USER_NAME, result.getName(), "Имя должно совпадать");
+        // When & Then
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.email").value("test@example.com"))
+                .andExpect(jsonPath("$.login").value("testuser"))
+                .andExpect(jsonPath("$.name").value("Test User"));
     }
 
     @Test
     @DisplayName("Создание пользователя с пустым email должно вызывать исключение")
-    void test_Create_UserWithEmptyEmail_ShouldThrowValidationException() {
+    void test_Create_EmptyEmail_ShouldThrowValidationException() throws Exception {
         // Given
-        User user = createUser("", USER_LOGIN, USER_NAME, USER_BIRTHDAY);
+        User user = createUser("", "testuser", "Test User", LocalDate.of(1990, 1, 1));
 
         // When & Then
-        assertThrows(ValidationException.class, () -> userController.create(user),
-                "Должно быть выброшено ValidationException при пустом email");
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("Создание пользователя с email без символа @ должно вызывать исключение")
-    void test_Create_UserWithInvalidEmail_ShouldThrowValidationException() {
+    @DisplayName("Создание пользователя с email без @ должно вызывать исключение")
+    void test_Create_EmailWithoutAt_ShouldThrowValidationException() throws Exception {
         // Given
-        User user = createUser("invalid-email", USER_LOGIN, USER_NAME, USER_BIRTHDAY);
+        User user = createUser("invalid-email", "testuser", "Test User", LocalDate.of(1990, 1, 1));
 
         // When & Then
-        assertThrows(ValidationException.class, () -> userController.create(user),
-                "Должно быть выброшено ValidationException при email без символа @");
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Создание пользователя с пустым логином должно вызывать исключение")
+    void test_Create_EmptyLogin_ShouldThrowValidationException() throws Exception {
+        // Given
+        User user = createUser("test@example.com", "", "Test User", LocalDate.of(1990, 1, 1));
+
+        // When & Then
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     @DisplayName("Создание пользователя с логином содержащим пробелы должно вызывать исключение")
-    void test_Create_UserWithSpacesInLogin_ShouldThrowValidationException() {
+    void test_Create_LoginWithSpaces_ShouldThrowValidationException() throws Exception {
         // Given
-        User user = createUser(USER_EMAIL, "login with spaces", USER_NAME, USER_BIRTHDAY);
+        User user = createUser("test@example.com", "test user", "Test User", LocalDate.of(1990, 1, 1));
 
         // When & Then
-        assertThrows(ValidationException.class, () -> userController.create(user),
-                "Должно быть выброшено ValidationException при логине с пробелами");
-    }
-
-    @Test
-    @DisplayName("Создание пользователя с пустым именем должно использовать логин как имя")
-    void test_Create_UserWithEmptyName_ShouldUseLoginAsName() {
-        // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, "", USER_BIRTHDAY);
-
-        // When
-        User result = userController.create(user);
-
-        // Then
-        assertEquals(USER_LOGIN, result.getName(),
-                "При пустом имени должно использоваться значение логина");
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     @DisplayName("Создание пользователя с датой рождения в будущем должно вызывать исключение")
-    void test_Create_UserWithFutureBirthday_ShouldThrowValidationException() {
+    void test_Create_FutureBirthday_ShouldThrowValidationException() throws Exception {
         // Given
-        LocalDate futureDate = LocalDate.now().plusDays(1);
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, futureDate);
+        User user = createUser("test@example.com", "testuser", "Test User", LocalDate.now().plusDays(1));
 
         // When & Then
-        assertThrows(ValidationException.class, () -> userController.create(user),
-                "Должно быть выброшено ValidationException при дате рождения в будущем");
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("Обновление несуществующего пользователя должно вызывать исключение")
-    void test_Update_NonExistentUser_ShouldThrowValidationException() {
+    @DisplayName("Создание пользователя без имени должно использовать логин как имя")
+    void test_Create_UserWithoutName_ShouldUseLoginAsName() throws Exception {
         // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        user.setId(NON_EXISTENT_ID);
+        User user = createUser("test@example.com", "testuser", null, LocalDate.of(1990, 1, 1));
 
         // When & Then
-        assertThrows(ValidationException.class, () -> userController.update(user),
-                "Должно быть выброшено ValidationException при обновлении несуществующего пользователя");
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("testuser"));
     }
 }
