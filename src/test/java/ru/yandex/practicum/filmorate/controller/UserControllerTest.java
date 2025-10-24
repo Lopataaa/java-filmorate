@@ -177,8 +177,8 @@ class UserControllerTest {
         mockMvc.perform(put("/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Validation error"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("404 NOT_FOUND"))
                 .andExpect(jsonPath("$.message").value("Пользователь с id=9999 не найден"));
     }
 

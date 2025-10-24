@@ -140,8 +140,8 @@ class FilmControllerTest {
         mockMvc.perform(put("/films")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Validation error"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("404 NOT_FOUND"))
                 .andExpect(jsonPath("$.message").value("Фильм с id=9999 не найден"));
     }
 

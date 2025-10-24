@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 
 import java.util.Map;
@@ -23,6 +24,18 @@ public class GlobalExceptionHandler {
     );
 
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+  }
+
+  @ExceptionHandler(ResponseStatusException.class)
+  public ResponseEntity<Map<String, String>> handleResponseStatusException(ResponseStatusException ex) {
+    log.warn("ResponseStatus exception: {}", ex.getReason());
+
+    Map<String, String> errorResponse = Map.of(
+            "error", ex.getStatusCode().toString(),
+            "message", ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString()
+    );
+
+    return new ResponseEntity<>(errorResponse, ex.getStatusCode());
   }
 
   @ExceptionHandler(Exception.class)

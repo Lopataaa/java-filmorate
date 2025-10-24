@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
@@ -46,7 +47,7 @@ public class FilmController {
         if (film.getId() == null || !films.containsKey(film.getId())) {
             String errorMessage = "Фильм с id=" + film.getId() + " не найден";
             log.error("PUT /films - ошибка: {}", errorMessage);
-            throw new ValidationException(errorMessage);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage); // Измените на 404
         }
 
         validateFilm(film);
