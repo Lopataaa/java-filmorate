@@ -1,7 +1,9 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
@@ -9,23 +11,23 @@ import ru.yandex.practicum.filmorate.model.User;
 import java.time.LocalDate;
 import java.util.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/users")
 public class UserController {
-
-    private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     private final Map<Integer, User> users = new HashMap<>();
     private int nextUserId = 1;
 
     @GetMapping
-    public List<User> findAll() {
+    public ResponseEntity<List<User>> findAll() {
         log.info("GET /users - получение списка всех пользователей. Количество пользователей: {}", users.size());
-        return new ArrayList<>(users.values());
+        List<User> userList = new ArrayList<>(users.values());
+        return ResponseEntity.ok(userList);
     }
 
     @PostMapping
-    public User create(@RequestBody User user) {
+    public ResponseEntity<User> create(@RequestBody User user) {
         log.info("POST /users - попытка создания нового пользователя: {}", user);
 
         validateUser(user);
@@ -37,11 +39,11 @@ public class UserController {
         users.put(user.getId(), user);
 
         log.info("POST /users - пользователь успешно создан с ID: {}", user.getId());
-        return user;
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
     @PutMapping
-    public User update(@RequestBody User user) {
+    public ResponseEntity<User> update(@RequestBody User user) {
         log.info("PUT /users - попытка обновления пользователя: {}", user);
 
         if (user.getId() == null || !users.containsKey(user.getId())) {
@@ -58,7 +60,7 @@ public class UserController {
         users.put(user.getId(), user);
 
         log.info("PUT /users - пользователь с ID {} успешно обновлен", user.getId());
-        return user;
+        return ResponseEntity.ok(user);
     }
 
     private void validateUser(User user) {
@@ -84,5 +86,11 @@ public class UserController {
         }
 
         log.debug("Валидация пользователя пройдена успешно");
+    }
+
+    public void clear() {
+        users.clear();
+        nextUserId = 1;
+        log.debug("User storage cleared");
     }
 }
