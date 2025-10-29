@@ -1,95 +1,91 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.service.FilmService;
 
-import java.time.LocalDate;
-import java.util.*;
+import java.util.List;
 
 @Slf4j
 @RestController
 @RequestMapping("/films")
+@RequiredArgsConstructor
 public class FilmController {
-
-    private final Map<Integer, Film> films = new HashMap<>();
-    private int nextFilmId = 1;
-
-    private static final LocalDate FIRST_FILM_DATE = LocalDate.of(1895, 12, 28);
+    private final FilmService filmService;
 
     @GetMapping
     public ResponseEntity<List<Film>> findAll() {
-        log.info("GET /films - получение списка всех фильмов. Количество фильмов: {}", films.size());
-        List<Film> filmList = new ArrayList<>(films.values());
-        return ResponseEntity.ok(filmList);
+        log.info("GET /films - получение списка всех фильмов");
+        List<Film> films = filmService.findAll();
+        log.debug("GET /films - найдено {} фильмов", films.size());
+        return ResponseEntity.ok(films);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Film> getById(@PathVariable Integer id) {
+        log.info("GET /films/{} - получение фильма по ID", id);
+        Film film = filmService.getById(id);
+        log.debug("GET /films/{} - найден фильм: '{}'", id, film.getName());
+        return ResponseEntity.ok(film);
     }
 
     @PostMapping
     public ResponseEntity<Film> create(@RequestBody Film film) {
-        log.info("POST /films - попытка создания нового фильма: {}", film);
+        log.info("POST /films - попытка создания нового фильма: {}", film.getName());
+        log.debug("POST /films - детали создаваемого фильма: {}", film);
 
-        validateFilm(film);
-        film.setId(nextFilmId++);
-        films.put(film.getId(), film);
+        Film createdFilm = filmService.create(film);
 
-        log.info("POST /films - фильм успешно создан с ID: {}", film.getId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(film);
+        log.info("POST /films - фильм успешно создан с ID: {}", createdFilm.getId());
+        log.debug("POST /films - созданный фильм: {}", createdFilm);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdFilm);
     }
 
     @PutMapping
     public ResponseEntity<Film> update(@RequestBody Film film) {
-        log.info("PUT /films - попытка обновления фильма: {}", film);
+        log.info("PUT /films - попытка обновления фильма с ID: {}", film.getId());
+        log.debug("PUT /films - обновляемые данные: {}", film);
 
-        if (film.getId() == null || !films.containsKey(film.getId())) {
-            String errorMessage = "Фильм с id=" + film.getId() + " не найден";
-            log.error("PUT /films - ошибка: {}", errorMessage);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage); // Измените на 404
-        }
+        Film updatedFilm = filmService.update(film);
 
-        validateFilm(film);
-        films.put(film.getId(), film);
-
-        log.info("PUT /films - фильм с ID {} успешно обновлен", film.getId());
-        return ResponseEntity.ok(film);
+        log.info("PUT /films - фильм с ID {} успешно обновлен", updatedFilm.getId());
+        log.debug("PUT /films - обновленный фильм: {}", updatedFilm);
+        return ResponseEntity.ok(updatedFilm);
     }
 
-    private void validateFilm(Film film) {
-        if (film.getName() == null || film.getName().isBlank()) {
-            String errorMessage = "Название фильма не может быть пустым";
-            log.warn("Валидация фильма failed: {}", errorMessage);
-            throw new ValidationException(errorMessage);
-        }
-        if (film.getDescription() != null && film.getDescription().length() > 200) {
-            String errorMessage = "Описание не может превышать 200 символов";
-            log.warn("Валидация фильма failed: {}", errorMessage);
-            throw new ValidationException(errorMessage);
-        }
-        if (film.getReleaseDate() == null) {
-            String errorMessage = "Дата релиза должна быть указана";
-            log.warn("Валидация фильма failed: {}", errorMessage);
-            throw new ValidationException(errorMessage);
-        }
-        if (film.getReleaseDate().isBefore(FIRST_FILM_DATE)) {
-            String errorMessage = "Дата релиза не может быть раньше 28 декабря 1895 года";
-            log.warn("Валидация фильма failed: {}", errorMessage);
-            throw new ValidationException(errorMessage);
-        }
-        if (film.getDuration() == null || film.getDuration() <= 0) {
-            String errorMessage = "Продолжительность фильма должна быть положительным числом";
-            log.warn("Валидация фильма failed: {}", errorMessage);
-            throw new ValidationException(errorMessage);
-        }
-
-        log.debug("Валидация фильма пройдена успешно");
+    @PutMapping("/{id}/like/{userId}")
+    public ResponseEntity<Void> addLike(@PathVariable Integer id, @PathVariable Integer userId) {
+        log.info("PUT /films/{}/like/{} - добавление лайка", id, userId);
+        filmService.addLike(id, userId);
+        log.debug("PUT /films/{}/like/{} - лайк успешно добавлен", id, userId);
+        return ResponseEntity.ok().build();
     }
 
-    public void clear() {
-        films.clear();
-        nextFilmId = 1;
-        log.debug("Film storage cleared");
+    @DeleteMapping("/{id}/like/{userId}")
+    public ResponseEntity<Void> removeLike(@PathVariable Integer id, @PathVariable Integer userId) {
+        log.info("DELETE /films/{}/like/{} - удаление лайка", id, userId);
+        filmService.removeLike(id, userId);
+        log.debug("DELETE /films/{}/like/{} - лайк успешно удален", id, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/popular")
+    public ResponseEntity<List<Film>> getPopularFilms(
+            @RequestParam(defaultValue = "10") Integer count) {
+        log.info("GET /films/popular - получение {} популярных фильмов", count);
+        List<Film> popularFilms = filmService.getPopularFilms(count);
+        log.debug("GET /films/popular - найдено {} популярных фильмов", popularFilms.size());
+        return ResponseEntity.ok(popularFilms);
+    }
+
+    @DeleteMapping("/clear")
+    public ResponseEntity<Void> clear() {
+        log.info("DELETE /films/clear - очистка всех фильмов");
+        filmService.clear();
+        return ResponseEntity.ok().build();
     }
 }

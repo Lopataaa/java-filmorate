@@ -16,37 +16,34 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(ValidationException.class)
   public ResponseEntity<Map<String, String>> handleValidationException(ValidationException ex) {
-    log.error("Validation error: {}", ex.getMessage());
-
-    Map<String, String> errorResponse = Map.of(
-            "error", "Validation error",
-            "message", ex.getMessage()
-    );
-
+    log.warn("Validation error: {}", ex.getMessage());
+    log.debug("Validation exception details: ", ex);
+    Map<String, String> errorResponse = Map.of("error", ex.getMessage());
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
   }
 
   @ExceptionHandler(ResponseStatusException.class)
   public ResponseEntity<Map<String, String>> handleResponseStatusException(ResponseStatusException ex) {
-    log.warn("ResponseStatus exception: {}", ex.getReason());
-
-    Map<String, String> errorResponse = Map.of(
-            "error", ex.getStatusCode().toString(),
-            "message", ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString()
-    );
-
+    if (ex.getStatusCode().is4xxClientError()) {
+      log.warn("Client error: {} - {}", ex.getStatusCode(), ex.getReason());
+    } else {
+      log.error("Server error: {} - {}", ex.getStatusCode(), ex.getReason(), ex);
+    }
+    Map<String, String> errorResponse = Map.of("error", ex.getReason());
     return new ResponseEntity<>(errorResponse, ex.getStatusCode());
   }
 
+  @ExceptionHandler(RuntimeException.class)
+  public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException ex) {
+    log.error("Runtime exception: {}", ex.getMessage(), ex);
+    Map<String, String> errorResponse = Map.of("error", "Внутренняя ошибка сервера");
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+  }
+
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
-    log.error("Internal server error: {}", ex.getMessage(), ex);
-
-    Map<String, String> errorResponse = Map.of(
-            "error", "Internal server error",
-            "message", "Произошла непредвиденная ошибка"
-    );
-
+  public ResponseEntity<Map<String, String>> handleException(Exception ex) {
+    log.error("Unexpected exception: {}", ex.getMessage(), ex);
+    Map<String, String> errorResponse = Map.of("error", "Произошла непредвиденная ошибка");
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
   }
 }
