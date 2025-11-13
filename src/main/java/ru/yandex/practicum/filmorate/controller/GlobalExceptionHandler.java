@@ -14,11 +14,14 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final String ERROR_KEY = "error";
+    private static final String INTERNAL_SERVER_ERROR_MESSAGE = "Внутренняя ошибка сервера";
+    private static final String UNEXPECTED_ERROR_MESSAGE = "Произошла непредвиденная ошибка";
+
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<Map<String, String>> handleValidationException(ValidationException ex) {
         log.warn("Validation error: {}", ex.getMessage());
-        log.debug("Validation exception details: ", ex);
-        Map<String, String> errorResponse = Map.of("error", ex.getMessage());
+        Map<String, String> errorResponse = Map.of(ERROR_KEY, ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
@@ -29,21 +32,21 @@ public class GlobalExceptionHandler {
         } else {
             log.error("Server error: {} - {}", ex.getStatusCode(), ex.getReason(), ex);
         }
-        Map<String, String> errorResponse = Map.of("error", ex.getReason());
+        Map<String, String> errorResponse = Map.of(ERROR_KEY, ex.getReason());
         return new ResponseEntity<>(errorResponse, ex.getStatusCode());
     }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException ex) {
-        log.error("Runtime exception: {}", ex.getMessage(), ex);
-        Map<String, String> errorResponse = Map.of("error", "Внутренняя ошибка сервера");
+        log.error("Runtime exception occurred", ex);
+        Map<String, String> errorResponse = Map.of(ERROR_KEY, INTERNAL_SERVER_ERROR_MESSAGE);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleException(Exception ex) {
-        log.error("Unexpected exception: {}", ex.getMessage(), ex);
-        Map<String, String> errorResponse = Map.of("error", "Произошла непредвиденная ошибка");
+        log.error("Unexpected exception occurred", ex);
+        Map<String, String> errorResponse = Map.of(ERROR_KEY, UNEXPECTED_ERROR_MESSAGE);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 }

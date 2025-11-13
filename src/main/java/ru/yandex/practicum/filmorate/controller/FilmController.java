@@ -21,7 +21,6 @@ public class FilmController {
     public ResponseEntity<List<Film>> findAll() {
         log.info("GET /films - получение списка всех фильмов");
         List<Film> films = filmService.findAll();
-        log.debug("GET /films - найдено {} фильмов", films.size());
         return ResponseEntity.ok(films);
     }
 
@@ -29,31 +28,22 @@ public class FilmController {
     public ResponseEntity<Film> getById(@PathVariable Integer id) {
         log.info("GET /films/{} - получение фильма по ID", id);
         Film film = filmService.getById(id);
-        log.debug("GET /films/{} - найден фильм: '{}'", id, film.getName());
         return ResponseEntity.ok(film);
     }
 
     @PostMapping
     public ResponseEntity<Film> create(@RequestBody Film film) {
-        log.info("POST /films - попытка создания нового фильма: {}", film.getName());
-        log.debug("POST /films - детали создаваемого фильма: {}", film);
-
+        log.info("POST /films - создание нового фильма: {}", film.getName());
         Film createdFilm = filmService.create(film);
-
         log.info("POST /films - фильм успешно создан с ID: {}", createdFilm.getId());
-        log.debug("POST /films - созданный фильм: {}", createdFilm);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdFilm);
     }
 
     @PutMapping
     public ResponseEntity<Film> update(@RequestBody Film film) {
-        log.info("PUT /films - попытка обновления фильма с ID: {}", film.getId());
-        log.debug("PUT /films - обновляемые данные: {}", film);
-
+        log.info("PUT /films - обновление фильма с ID: {}", film.getId());
         Film updatedFilm = filmService.update(film);
-
         log.info("PUT /films - фильм с ID {} успешно обновлен", updatedFilm.getId());
-        log.debug("PUT /films - обновленный фильм: {}", updatedFilm);
         return ResponseEntity.ok(updatedFilm);
     }
 
@@ -61,7 +51,6 @@ public class FilmController {
     public ResponseEntity<Void> addLike(@PathVariable Integer id, @PathVariable Integer userId) {
         log.info("PUT /films/{}/like/{} - добавление лайка", id, userId);
         filmService.addLike(id, userId);
-        log.debug("PUT /films/{}/like/{} - лайк успешно добавлен", id, userId);
         return ResponseEntity.ok().build();
     }
 
@@ -69,7 +58,6 @@ public class FilmController {
     public ResponseEntity<Void> removeLike(@PathVariable Integer id, @PathVariable Integer userId) {
         log.info("DELETE /films/{}/like/{} - удаление лайка", id, userId);
         filmService.removeLike(id, userId);
-        log.debug("DELETE /films/{}/like/{} - лайк успешно удален", id, userId);
         return ResponseEntity.ok().build();
     }
 
@@ -78,7 +66,6 @@ public class FilmController {
             @RequestParam(defaultValue = "10") Integer count) {
         log.info("GET /films/popular - получение {} популярных фильмов", count);
         List<Film> popularFilms = filmService.getPopularFilms(count);
-        log.debug("GET /films/popular - найдено {} популярных фильмов", popularFilms.size());
         return ResponseEntity.ok(popularFilms);
     }
 
