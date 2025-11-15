@@ -13,6 +13,8 @@ public class Film {
     private String description;
     private LocalDate releaseDate;
     private Integer duration;
+    private Mpa mpa;
+    private Set<Genre> genres = new HashSet<>();
     private Set<Integer> likes = new HashSet<>();
 
     public void addLike(Integer userId) {
@@ -29,5 +31,17 @@ public class Film {
 
     public int getLikesCount() {
         return likes.size();
+    }
+
+    public void addGenre(Genre genre) {
+        genres.add(genre);
+    }
+
+    public void removeGenre(Genre genre) {
+        genres.remove(genre);
+    }
+
+    public Set<Genre> getGenres() {
+        return new HashSet<>(genres);
     }
 }
