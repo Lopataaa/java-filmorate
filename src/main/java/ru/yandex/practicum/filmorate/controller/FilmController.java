@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.service.FilmService;
 
 import java.util.List;
@@ -80,6 +82,34 @@ public class FilmController {
         List<Film> popularFilms = filmService.getPopularFilms(count);
         log.debug("GET /films/popular - найдено {} популярных фильмов", popularFilms.size());
         return ResponseEntity.ok(popularFilms);
+    }
+
+    @GetMapping("/mpa")
+    public ResponseEntity<List<Mpa>> getAllMpa() {
+        log.info("GET /films/mpa - получение всех рейтингов MPA");
+        List<Mpa> mpaList = filmService.getAllMpa();
+        return ResponseEntity.ok(mpaList);
+    }
+
+    @GetMapping("/mpa/{id}")
+    public ResponseEntity<Mpa> getMpaById(@PathVariable Integer id) {
+        log.info("GET /films/mpa/{} - получение рейтинга MPA по ID", id);
+        Mpa mpa = filmService.getMpaById(id);
+        return ResponseEntity.ok(mpa);
+    }
+
+    @GetMapping("/genres")
+    public ResponseEntity<List<Genre>> getAllGenres() {
+        log.info("GET /films/genres - получение всех жанров");
+        List<Genre> genres = filmService.getAllGenres();
+        return ResponseEntity.ok(genres);
+    }
+
+    @GetMapping("/genres/{id}")
+    public ResponseEntity<Genre> getGenreById(@PathVariable Integer id) {
+        log.info("GET /films/genres/{} - получение жанра по ID", id);
+        Genre genre = filmService.getGenreById(id);
+        return ResponseEntity.ok(genre);
     }
 
     @DeleteMapping("/clear")

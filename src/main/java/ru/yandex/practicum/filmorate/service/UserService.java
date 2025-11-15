@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.Friendship;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
@@ -69,13 +70,17 @@ public class UserService {
             throw new ValidationException("Нельзя добавить себя в друзья");
         }
 
-        user.addFriend(friendId);
-        friend.addFriend(userId);
+        userStorage.addFriend(userId, friendId);
+        log.info("Пользователь {} отправил заявку в друзья пользователю {}", userId, friendId);
+    }
 
-        userStorage.update(user);
-        userStorage.update(friend);
+    public void confirmFriendship(Integer userId, Integer friendId) {
+        log.debug("Подтверждение дружбы: пользователь {} подтверждает дружбу с {}", userId, friendId);
+        User user = getById(userId);
+        User friend = getById(friendId);
 
-        log.info("Пользователи {} и {} теперь друзья", userId, friendId);
+        userStorage.confirmFriendship(userId, friendId);
+        log.info("Пользователь {} подтвердил дружбу с пользователем {}", userId, friendId);
     }
 
     public void removeFriend(Integer userId, Integer friendId) {
@@ -83,19 +88,15 @@ public class UserService {
         User user = getById(userId);
         User friend = getById(friendId);
 
-        user.removeFriend(friendId);
-        friend.removeFriend(userId);
-
-        userStorage.update(user);
-        userStorage.update(friend);
-
-        log.info("Пользователи {} и {} больше не друзья", userId, friendId);
+        userStorage.removeFriend(userId, friendId);
+        log.info("Пользователь {} удалил из друзей пользователя {}", userId, friendId);
     }
 
     public List<User> getFriends(Integer userId) {
         log.debug("Получение списка друзей пользователя: {}", userId);
         User user = getById(userId);
-        List<User> friends = user.getFriends().stream()
+        List<Integer> friendIds = userStorage.getFriendIds(userId);
+        List<User> friends = friendIds.stream()
                 .map(this::getById)
                 .collect(Collectors.toList());
         log.debug("Найдено {} друзей у пользователя {}", friends.size(), userId);
@@ -107,14 +108,24 @@ public class UserService {
         User user = getById(userId);
         User otherUser = getById(otherUserId);
 
-        List<User> commonFriends = user.getFriends().stream()
-                .filter(otherUser.getFriends()::contains)
+        List<Integer> commonFriendIds = userStorage.getCommonFriendIds(userId, otherUserId);
+        List<User> commonFriends = commonFriendIds.stream()
                 .map(this::getById)
                 .collect(Collectors.toList());
 
         log.debug("Найдено {} общих друзей между пользователями {} и {}",
                 commonFriends.size(), userId, otherUserId);
         return commonFriends;
+    }
+
+    public List<Friendship> getFriendshipStatuses(Integer userId) {
+        log.debug("Получение статусов дружбы для пользователя: {}", userId);
+        return userStorage.getFriendshipStatuses(userId);
+    }
+
+    public void clear() {
+        log.info("Очистка всех данных пользователей");
+        userStorage.clear();
     }
 
     private void validateUser(User user) {
@@ -138,10 +149,5 @@ public class UserService {
         }
 
         log.debug("Валидация пользователя пройдена успешно: {}", user.getLogin());
-    }
-
-    public void clear() {
-        log.info("Очистка данных пользователей");
-        userStorage.clear();
     }
 }
