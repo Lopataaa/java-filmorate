@@ -88,9 +88,6 @@ public class InMemoryUserStorage implements UserStorage {
     @Override
     public void confirmFriendship(Integer userId, Integer friendId) {
         log.debug("Подтверждение дружбы между пользователями {} и {}", userId, friendId);
-        // Реализация подтверждения дружбы
-        // В in-memory реализации это может быть просто логирование
-        // или обновление статуса дружбы, если у вас есть такая логика
     }
 
     @Override
@@ -104,33 +101,24 @@ public class InMemoryUserStorage implements UserStorage {
         List<Integer> userFriends = getFriendIds(userId);
         List<Integer> otherUserFriends = getFriendIds(otherUserId);
 
-        return userFriends.stream()
-                .filter(otherUserFriends::contains)
-                .collect(Collectors.toList());
+        return userFriends.stream().filter(otherUserFriends::contains).collect(Collectors.toList());
     }
 
     @Override
     public List<User> getFriends(Integer userId) {
         List<Integer> friendIds = getFriendIds(userId);
-        return friendIds.stream()
-                .map(users::get)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        return friendIds.stream().map(users::get).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
     @Override
     public List<User> getCommonFriends(Integer userId, Integer otherUserId) {
         List<Integer> commonFriendIds = getCommonFriendIds(userId, otherUserId);
-        return commonFriendIds.stream()
-                .map(users::get)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        return commonFriendIds.stream().map(users::get).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
     @Override
     public List<Friendship> getFriendshipStatuses(Integer userId) {
         log.debug("Получение статусов дружбы для пользователя: {}", userId);
-        // Заглушка - реализуйте логику получения статусов дружбы
         return new ArrayList<>();
     }
 }

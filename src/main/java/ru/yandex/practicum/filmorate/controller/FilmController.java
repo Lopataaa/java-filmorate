@@ -76,8 +76,7 @@ public class FilmController {
     }
 
     @GetMapping("/popular")
-    public ResponseEntity<List<Film>> getPopularFilms(
-            @RequestParam(defaultValue = "10") Integer count) {
+    public ResponseEntity<List<Film>> getPopularFilms(@RequestParam(defaultValue = "10") Integer count) {
         log.info("GET /films/popular - получение {} популярных фильмов", count);
         List<Film> popularFilms = filmService.getPopularFilms(count);
         log.debug("GET /films/popular - найдено {} популярных фильмов", popularFilms.size());

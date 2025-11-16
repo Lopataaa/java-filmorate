@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.model;
 
 import lombok.Data;
+
 import java.util.Objects;
 
 @Data
@@ -13,7 +14,6 @@ public class Genre {
         this.name = name;
     }
 
-    // Важно для корректной работы в Set
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

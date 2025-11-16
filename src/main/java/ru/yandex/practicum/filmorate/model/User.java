@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.model;
 
 import lombok.Data;
+
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
@@ -14,7 +15,6 @@ public class User {
     private LocalDate birthday;
     private Set<Integer> friends = new HashSet<>(); // ID друзей пользователя
 
-    // Методы для работы с друзьями
     public void addFriend(Integer friendId) {
         friends.add(friendId);
     }

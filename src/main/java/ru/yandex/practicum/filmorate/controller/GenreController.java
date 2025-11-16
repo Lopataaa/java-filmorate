@@ -20,13 +20,13 @@ public class GenreController {
     @GetMapping
     public List<Genre> getAllGenres() {
         log.info("Получение всех жанров");
-        return genreStorage.findAll(); // было: getAllGenres()
+        return genreStorage.findAll();
     }
 
     @GetMapping("/{id}")
     public Genre getGenreById(@PathVariable int id) {
         log.info("Получение жанра по ID: {}", id);
-        return genreStorage.findById(id) // было: getGenreById(id)
+        return genreStorage.findById(id)
                 .orElseThrow(() -> new RuntimeException("Жанр с ID " + id + " не найден"));
     }
 }

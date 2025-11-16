@@ -45,7 +45,6 @@ public class FilmService {
         validateGenres(film.getGenres());
 
         Film createdFilm = filmStorage.create(film);
-        // Сохранение жанров
         filmStorage.saveFilmGenres(createdFilm.getId(), film.getGenres());
 
         loadFilmDetails(createdFilm);
@@ -65,7 +64,6 @@ public class FilmService {
         }
 
         Film updatedFilm = filmStorage.update(film);
-        // Обновление жанров
         filmStorage.updateFilmGenres(updatedFilm.getId(), film.getGenres());
 
         loadFilmDetails(updatedFilm);

@@ -1,7 +1,6 @@
 package ru.yandex.practicum.filmorate.storage;
 
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Genre;
 
 import java.util.ArrayList;
@@ -15,7 +14,6 @@ public class InMemoryGenreStorage implements GenreStorage {
     private final Map<Integer, Genre> genreMap = new HashMap<>();
 
     public InMemoryGenreStorage() {
-        // Инициализация жанров
         genreMap.put(1, new Genre(1, "Комедия"));
         genreMap.put(2, new Genre(2, "Драма"));
         genreMap.put(3, new Genre(3, "Мультфильм"));

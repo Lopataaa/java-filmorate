@@ -17,7 +17,6 @@ public class Film {
     private Set<Genre> genres = new HashSet<>();
     private Set<Integer> likes = new HashSet<>();
 
-    // Конструкторы
     public Film() {
     }
 
@@ -31,7 +30,6 @@ public class Film {
         this.mpa = mpa;
     }
 
-    // Методы для likes
     public void addLike(Integer userId) {
         likes.add(userId);
     }
@@ -48,7 +46,6 @@ public class Film {
         return likes.size();
     }
 
-    // Методы для genres
     public void addGenre(Genre genre) {
         genres.add(genre);
     }
@@ -61,7 +58,6 @@ public class Film {
         return new HashSet<>(genres);
     }
 
-    // Сеттер для genres (важно для Spring/JDBC)
     public void setGenres(Set<Genre> genres) {
         this.genres.clear();
         if (genres != null) {
@@ -69,7 +65,6 @@ public class Film {
         }
     }
 
-    // Сеттер для likes (важно для Spring/JDBC)
     public void setLikes(Set<Integer> likes) {
         this.likes.clear();
         if (likes != null) {
@@ -77,7 +72,6 @@ public class Film {
         }
     }
 
-    // Метод для удобного вывода (опционально)
     @Override
     public String toString() {
         return "Film{" +

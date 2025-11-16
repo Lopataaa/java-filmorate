@@ -20,13 +20,13 @@ public class MpaController {
     @GetMapping
     public List<Mpa> getAllMpa() {
         log.info("Получение всех рейтингов MPA");
-        return mpaStorage.findAll(); // было: getAllMpa()
+        return mpaStorage.findAll();
     }
 
     @GetMapping("/{id}")
     public Mpa getMpaById(@PathVariable int id) {
         log.info("Получение рейтинга MPA по ID: {}", id);
-        return mpaStorage.findById(id) // было: getMpaById(id)
+        return mpaStorage.findById(id)
                 .orElseThrow(() -> new RuntimeException("Рейтинг MPA с ID " + id + " не найден"));
     }
 }
