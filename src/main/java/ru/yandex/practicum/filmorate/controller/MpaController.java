@@ -1,7 +1,9 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.storage.MpaStorage;
 
@@ -27,6 +29,7 @@ public class MpaController {
     public Mpa getMpaById(@PathVariable int id) {
         log.info("Получение рейтинга MPA по ID: {}", id);
         return mpaStorage.findById(id)
-                .orElseThrow(() -> new RuntimeException("Рейтинг MPA с ID " + id + " не найден"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Рейтинг MPA с id=" + id + " не найден"));
     }
 }
