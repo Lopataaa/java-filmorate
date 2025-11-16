@@ -7,6 +7,7 @@ import ru.yandex.practicum.filmorate.model.Genre;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -46,6 +47,16 @@ public class InMemoryFilmStorage implements FilmStorage {
     @Override
     public boolean existsById(Integer id) {
         return films.containsKey(id);
+    }
+
+    @Override
+    public void delete(Integer id) {
+        if (films.containsKey(id)) {
+            films.remove(id);
+            log.info("Фильм с ID {} удален", id);
+        } else {
+            log.warn("Попытка удаления несуществующего фильма с ID: {}", id);
+        }
     }
 
     @Override
@@ -102,5 +113,16 @@ public class InMemoryFilmStorage implements FilmStorage {
     public Set<Genre> getFilmGenres(Integer filmId) {
         Film film = films.get(filmId);
         return film != null ? film.getGenres() : new HashSet<>();
+    }
+
+    @Override
+    public List<Film> getPopularFilms(Integer count) {
+        int limit = (count == null || count <= 0) ? 10 : count;
+        log.debug("Получение {} популярных фильмов из in-memory хранилища", limit);
+
+        return films.values().stream()
+                .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed())
+                .limit(limit)
+                .collect(Collectors.toList());
     }
 }

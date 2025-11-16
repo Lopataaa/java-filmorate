@@ -203,8 +203,10 @@ public class FilmService {
     private void validateGenres(Set<Genre> genres) {
         if (genres != null) {
             for (Genre genre : genres) {
-                if (genre.getId() != null && !genreStorage.existsById(genre.getId())) {
-                    throw new ValidationException("Жанр с id=" + genre.getId() + " не найден");
+                if (genre.getId() != null) {
+                    if (!genreStorage.existsById(genre.getId())) {
+                        throw new ValidationException("Жанр с id=" + genre.getId() + " не найден");
+                    }
                 }
             }
         }

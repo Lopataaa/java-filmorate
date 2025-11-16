@@ -1,41 +1,41 @@
 package ru.yandex.practicum.filmorate.storage;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Repository;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Genre;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
-@Slf4j
-@Component
+@Repository
 public class InMemoryGenreStorage implements GenreStorage {
-    private final Map<Integer, Genre> genres = new HashMap<>();
+    private final Map<Integer, Genre> genreMap = new HashMap<>();
 
     public InMemoryGenreStorage() {
-        genres.put(1, new Genre(1, "Комедия"));
-        genres.put(2, new Genre(2, "Драма"));
-        genres.put(3, new Genre(3, "Мультфильм"));
-        genres.put(4, new Genre(4, "Триллер"));
-        genres.put(5, new Genre(5, "Документальный"));
-        genres.put(6, new Genre(6, "Боевик"));
-        log.info("Инициализировано жанров: {}", genres.size());
+        // Инициализация жанров
+        genreMap.put(1, new Genre(1, "Комедия"));
+        genreMap.put(2, new Genre(2, "Драма"));
+        genreMap.put(3, new Genre(3, "Мультфильм"));
+        genreMap.put(4, new Genre(4, "Триллер"));
+        genreMap.put(5, new Genre(5, "Документальный"));
+        genreMap.put(6, new Genre(6, "Боевик"));
     }
 
     @Override
     public List<Genre> findAll() {
-        log.debug("Получение всех жанров");
-        return new ArrayList<>(genres.values());
+        return new ArrayList<>(genreMap.values());
     }
 
     @Override
     public Optional<Genre> findById(Integer id) {
-        log.debug("Поиск жанра по ID: {}", id);
-        return Optional.ofNullable(genres.get(id));
+        return Optional.ofNullable(genreMap.get(id));
     }
 
     @Override
     public boolean existsById(Integer id) {
-        log.debug("Проверка существования жанра с ID: {}", id);
-        return genres.containsKey(id);
+        return genreMap.containsKey(id);
     }
 }

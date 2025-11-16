@@ -34,7 +34,7 @@ public class InMemoryMpaStorage implements MpaStorage {
 
     @Override
     public boolean existsById(Integer id) {
-        log.debug("Проверка существования MPA рейтинга с ID: {}", id);
+        log.debug("Проверка существования MPA рейтинга по ID: {}", id);
         return mpaRatings.containsKey(id);
     }
 }

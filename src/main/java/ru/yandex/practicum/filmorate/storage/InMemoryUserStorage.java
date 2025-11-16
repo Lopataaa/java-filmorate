@@ -7,6 +7,7 @@ import ru.yandex.practicum.filmorate.model.User;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -49,6 +50,16 @@ public class InMemoryUserStorage implements UserStorage {
     }
 
     @Override
+    public void delete(Integer id) {
+        if (users.containsKey(id)) {
+            users.remove(id);
+            log.info("Пользователь с ID {} удален", id);
+        } else {
+            log.warn("Попытка удаления несуществующего пользователя с ID: {}", id);
+        }
+    }
+
+    @Override
     public void clear() {
         log.info("Очистка хранилища пользователей");
         users.clear();
@@ -57,34 +68,69 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public void addFriend(Integer userId, Integer friendId) {
-        log.debug("Пользователь {} добавил в друзья пользователя {}", userId, friendId);
-    }
-
-    @Override
-    public void confirmFriendship(Integer userId, Integer friendId) {
-        log.debug("Пользователь {} подтвердил дружбу с пользователем {}", userId, friendId);
+        User user = users.get(userId);
+        User friend = users.get(friendId);
+        if (user != null && friend != null) {
+            user.addFriend(friendId);
+            log.debug("Пользователь {} добавил в друзья пользователя {}", userId, friendId);
+        }
     }
 
     @Override
     public void removeFriend(Integer userId, Integer friendId) {
-        log.debug("Пользователь {} удалил из друзей пользователя {}", userId, friendId);
+        User user = users.get(userId);
+        if (user != null) {
+            user.removeFriend(friendId);
+            log.debug("Пользователь {} удалил из друзей пользователя {}", userId, friendId);
+        }
+    }
+
+    @Override
+    public void confirmFriendship(Integer userId, Integer friendId) {
+        log.debug("Подтверждение дружбы между пользователями {} и {}", userId, friendId);
+        // Реализация подтверждения дружбы
+        // В in-memory реализации это может быть просто логирование
+        // или обновление статуса дружбы, если у вас есть такая логика
     }
 
     @Override
     public List<Integer> getFriendIds(Integer userId) {
-        log.debug("Получение друзей пользователя {}", userId);
-        return new ArrayList<>();
+        User user = users.get(userId);
+        return user != null ? new ArrayList<>(user.getFriends()) : new ArrayList<>();
     }
 
     @Override
     public List<Integer> getCommonFriendIds(Integer userId, Integer otherUserId) {
-        log.debug("Поиск общих друзей между {} и {}", userId, otherUserId);
-        return new ArrayList<>();
+        List<Integer> userFriends = getFriendIds(userId);
+        List<Integer> otherUserFriends = getFriendIds(otherUserId);
+
+        return userFriends.stream()
+                .filter(otherUserFriends::contains)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<User> getFriends(Integer userId) {
+        List<Integer> friendIds = getFriendIds(userId);
+        return friendIds.stream()
+                .map(users::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<User> getCommonFriends(Integer userId, Integer otherUserId) {
+        List<Integer> commonFriendIds = getCommonFriendIds(userId, otherUserId);
+        return commonFriendIds.stream()
+                .map(users::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Friendship> getFriendshipStatuses(Integer userId) {
-        log.debug("Получение статусов дружбы для пользователя {}", userId);
+        log.debug("Получение статусов дружбы для пользователя: {}", userId);
+        // Заглушка - реализуйте логику получения статусов дружбы
         return new ArrayList<>();
     }
 }
