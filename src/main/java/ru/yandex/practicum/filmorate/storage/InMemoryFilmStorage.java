@@ -14,6 +14,11 @@ import java.util.stream.Collectors;
 public class InMemoryFilmStorage implements FilmStorage {
     private final Map<Integer, Film> films = new ConcurrentHashMap<>();
     private int nextId = 1;
+    private final GenreStorage genreStorage;
+
+    public InMemoryFilmStorage(GenreStorage genreStorage) {
+        this.genreStorage = genreStorage;
+    }
 
     @Override
     public List<Film> findAll() {
@@ -94,7 +99,11 @@ public class InMemoryFilmStorage implements FilmStorage {
     public void saveFilmGenres(Integer filmId, Set<Genre> genres) {
         Film film = films.get(filmId);
         if (film != null) {
-            film.getGenres().addAll(genres);
+            Set<Genre> fullGenres = new HashSet<>();
+            for (Genre genre : genres) {
+                genreStorage.findById(genre.getId()).ifPresent(fullGenres::add);
+            }
+            film.getGenres().addAll(fullGenres);
             log.debug("Добавлены жанры к фильму {}: {}", filmId, genres);
         }
     }
@@ -104,8 +113,12 @@ public class InMemoryFilmStorage implements FilmStorage {
         Film film = films.get(filmId);
         if (film != null) {
             film.getGenres().clear();
-            film.getGenres().addAll(genres);
-            log.debug("Обновлены жанры фильма {}: {}", filmId, genres);
+            Set<Genre> fullGenres = new HashSet<>();
+            for (Genre genre : genres) {
+                genreStorage.findById(genre.getId()).ifPresent(fullGenres::add);
+            }
+            film.getGenres().addAll(fullGenres);
+            log.debug("Обновлены жанры фильма {}: {}", filmId, fullGenres);
         }
     }
 

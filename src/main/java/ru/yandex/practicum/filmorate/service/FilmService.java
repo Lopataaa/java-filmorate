@@ -161,7 +161,9 @@ public class FilmService {
         Set<Genre> filmGenres = filmStorage.getFilmGenres(film.getId());
         film.getGenres().clear();
         for (Genre genre : filmGenres) {
-            Genre fullGenre = genreStorage.findById(genre.getId()).orElse(genre);
+            Genre fullGenre = genreStorage.findById(genre.getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Жанр с id=" + genre.getId() + " не найден"));
             film.getGenres().add(fullGenre);
         }
     }
