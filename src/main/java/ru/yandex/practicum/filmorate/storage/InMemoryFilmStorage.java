@@ -104,7 +104,7 @@ public class InMemoryFilmStorage implements FilmStorage {
                 genreStorage.findById(genre.getId()).ifPresent(fullGenres::add);
             }
             film.getGenres().addAll(fullGenres);
-            log.debug("Добавлены жанры к фильму {}: {}", filmId, genres);
+            log.debug("Добавлены жанры к фильму {}: {}", filmId, fullGenres);
         }
     }
 
