@@ -160,7 +160,10 @@ public class FilmService {
 
         Set<Genre> filmGenres = filmStorage.getFilmGenres(film.getId());
         film.getGenres().clear();
-        film.getGenres().addAll(filmGenres);
+        for (Genre genre : filmGenres) {
+            Genre fullGenre = genreStorage.findById(genre.getId()).orElse(genre);
+            film.getGenres().add(fullGenre);
+        }
     }
 
     private void validateFilm(Film film) {
@@ -193,7 +196,8 @@ public class FilmService {
     private void validateMpa(Mpa mpa) {
         if (mpa != null && mpa.getId() != null) {
             if (!mpaStorage.existsById(mpa.getId())) {
-                throw new ValidationException("Рейтинг MPA с id=" + mpa.getId() + " не найден");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Рейтинг MPA с id=" + mpa.getId() + " не найден");
             }
         }
     }
@@ -203,7 +207,8 @@ public class FilmService {
             for (Genre genre : genres) {
                 if (genre.getId() != null) {
                     if (!genreStorage.existsById(genre.getId())) {
-                        throw new ValidationException("Жанр с id=" + genre.getId() + " не найден");
+                        throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "Жанр с id=" + genre.getId() + " не найден");
                     }
                 }
             }
