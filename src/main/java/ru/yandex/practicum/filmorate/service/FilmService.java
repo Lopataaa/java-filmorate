@@ -159,15 +159,11 @@ public class FilmService {
             film.setMpa(mpa);
         }
 
-        Set<Genre> currentGenres = new HashSet<>(film.getGenres());
-        film.getGenres().clear();
-
-        for (Genre genre : currentGenres) {
-            Genre fullGenre = genreStorage.findById(genre.getId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Жанр с id=" + genre.getId() + " не найден"));
-            film.getGenres().add(fullGenre);
+        Set<Genre> fullGenres = new HashSet<>();
+        for (Genre genre : film.getGenres()) {
+            fullGenres.add(genreStorage.findById(genre.getId()).orElse(genre));
         }
+        film.setGenres(fullGenres);
     }
 
     private void validateFilm(Film film) {
