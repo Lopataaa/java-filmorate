@@ -123,3 +123,12 @@ CREATE TABLE IF NOT EXISTS friendships (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (friend_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Индексы для оптимизации
+CREATE INDEX IF NOT EXISTS idx_films_mpa_id ON films(mpa_id);
+CREATE INDEX IF NOT EXISTS idx_film_genres_film_id ON film_genres(film_id);
+CREATE INDEX IF NOT EXISTS idx_film_genres_genre_id ON film_genres(genre_id);
+CREATE INDEX IF NOT EXISTS idx_film_likes_film_id ON film_likes(film_id);
+CREATE INDEX IF NOT EXISTS idx_film_likes_user_id ON film_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id);
+CREATE INDEX IF NOT EXISTS idx_friendships_friend_id ON friendships(friend_id);
