@@ -57,7 +57,6 @@ public class UserDbStorage implements UserStorage {
     public List<User> findAll() {
         String sql = "SELECT * FROM users ORDER BY id";
         List<User> users = jdbcTemplate.query(sql, userRowMapper);
-        // Загружаем друзей для каждого пользователя
         users.forEach(this::loadFriends);
         return users;
     }
@@ -81,7 +80,7 @@ public class UserDbStorage implements UserStorage {
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbcTemplate.update(connection -> {
-            PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement stmt = connection.prepareStatement(sql, new String[]{"id"});
             stmt.setString(1, user.getEmail());
             stmt.setString(2, user.getLogin());
             stmt.setString(3, user.getName());
@@ -89,7 +88,13 @@ public class UserDbStorage implements UserStorage {
             return stmt;
         }, keyHolder);
 
-        user.setId(keyHolder.getKey().intValue());
+        Number key = keyHolder.getKey();
+        if (key != null) {
+            user.setId(key.intValue());
+        } else {
+            throw new RuntimeException("Не удалось получить ID созданного пользователя");
+        }
+
         return user;
     }
 

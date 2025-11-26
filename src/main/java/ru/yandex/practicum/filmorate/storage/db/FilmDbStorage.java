@@ -40,7 +40,6 @@ public class FilmDbStorage implements FilmStorage {
 
         film.setDuration(rs.getInt("duration"));
 
-        // Загружаем MPA
         Mpa mpa = new Mpa(
                 rs.getInt("mpa_id"),
                 rs.getString("mpa_name"),
@@ -58,7 +57,6 @@ public class FilmDbStorage implements FilmStorage {
                 "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
                 "ORDER BY f.id";
         List<Film> films = jdbcTemplate.query(sql, filmRowMapper);
-        // Загружаем жанры и лайки для каждого фильма
         films.forEach(film -> {
             film.setGenres(getFilmGenres(film.getId()));
             film.setLikes(getLikes(film.getId()));
@@ -74,7 +72,7 @@ public class FilmDbStorage implements FilmStorage {
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbcTemplate.update(connection -> {
-            PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement stmt = connection.prepareStatement(sql, new String[]{"id"});
             stmt.setString(1, film.getName());
             stmt.setString(2, film.getDescription());
             stmt.setDate(3, Date.valueOf(film.getReleaseDate()));
@@ -83,9 +81,13 @@ public class FilmDbStorage implements FilmStorage {
             return stmt;
         }, keyHolder);
 
-        film.setId(keyHolder.getKey().intValue());
+        Number key = keyHolder.getKey();
+        if (key != null) {
+            film.setId(key.intValue());
+        } else {
+            throw new RuntimeException("Не удалось получить ID созданного фильма");
+        }
 
-        // Сохраняем жанры
         saveFilmGenres(film.getId(), film.getGenres());
         return film;
     }
@@ -103,7 +105,6 @@ public class FilmDbStorage implements FilmStorage {
                 film.getId()
         );
 
-        // Обновляем жанры
         updateFilmGenres(film.getId(), film.getGenres());
         return film;
     }
@@ -175,11 +176,8 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public void updateFilmGenres(Integer filmId, Set<Genre> genres) {
-        // Удаляем старые жанры
         String deleteSql = "DELETE FROM film_genres WHERE film_id = ?";
         jdbcTemplate.update(deleteSql, filmId);
-
-        // Добавляем новые жанры
         saveFilmGenres(filmId, genres);
     }
 
@@ -206,7 +204,6 @@ public class FilmDbStorage implements FilmStorage {
                 "LIMIT ?";
 
         List<Film> films = jdbcTemplate.query(sql, filmRowMapper, count);
-        // Загружаем жанры и лайки для каждого фильма
         films.forEach(film -> {
             film.setGenres(getFilmGenres(film.getId()));
             film.setLikes(getLikes(film.getId()));
