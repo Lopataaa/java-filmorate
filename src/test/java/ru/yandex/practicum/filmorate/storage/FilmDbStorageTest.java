@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureTestDatabase
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 @ComponentScan(basePackages = {"ru.yandex.practicum.filmorate.storage.db"})
-@Sql(scripts = {"/schema.sql", "/test-data.sql"})
+//@Sql(scripts = {"/test-schema.sql", "/data.sql"})
 class FilmDbStorageTest {
 
     private final FilmDbStorage filmStorage;
