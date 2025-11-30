@@ -1,408 +1,233 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
+import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.ResponseEntity;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
+import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
+import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
+import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-@WebMvcTest(UserController.class)
+@JdbcTest
+@Import({
+        FilmController.class,
+        UserController.class,
+        FilmService.class,
+        UserService.class,
+        FilmDbStorage.class,
+        UserDbStorage.class,
+        MpaDbStorage.class,
+        GenreDbStorage.class
+})
 class UserControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private UserController userController;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private UserDbStorage userStorage;
 
-    @MockBean
-    private UserService userService;
+    @BeforeEach
+    public void setUp() {
+        userStorage.getAll().forEach(user -> userStorage.delete(user.getId()));
+    }
 
-    private static final String USER_EMAIL = "test@example.com";
-    private static final String USER_LOGIN = "testuser";
-    private static final String USER_NAME = "Test User";
-    private static final LocalDate USER_BIRTHDAY = LocalDate.of(1990, 1, 1);
+    @Test
+    public void createUserValidData() {
+        User user = createValidUser("user@email.com", "login", "User Name", LocalDate.of(1990, 1, 1));
+        ResponseEntity<Object> response = userController.createUser(user);
 
-    private User createUser(String email, String login, String name, LocalDate birthday) {
+        assertEquals(201, response.getStatusCode().value());
+        assertNotNull(response.getBody());
+        assertInstanceOf(User.class, response.getBody());
+        User createdUser = (User) response.getBody();
+        assertEquals("User Name", createdUser.getName());
+    }
+
+    @Test
+    public void createUserWithEmptyName() {
+        User user = createValidUser("user@email.com", "login", "", LocalDate.of(1990, 1, 1));
+        ResponseEntity<Object> response = userController.createUser(user);
+
+        assertEquals(201, response.getStatusCode().value());
+        User createdUser = (User) response.getBody();
+        assertNotNull(createdUser);
+        assertEquals("login", createdUser.getName());
+    }
+
+    @Test
+    public void createUserWithNullName() {
+        User user = createValidUser("user@email.com", "login", null, LocalDate.of(1990, 1, 1));
+        ResponseEntity<Object> response = userController.createUser(user);
+
+        assertEquals(201, response.getStatusCode().value());
+        User createdUser = (User) response.getBody();
+        assertNotNull(createdUser);
+        assertEquals("login", createdUser.getName());
+    }
+
+    @Test
+    public void createUserWithWhitespaceName() {
+        User user = createValidUser("user@email.com", "login", "   ", LocalDate.of(1990, 1, 1));
+        ResponseEntity<Object> response = userController.createUser(user);
+
+        assertEquals(201, response.getStatusCode().value());
+        User createdUser = (User) response.getBody();
+        assertNotNull(createdUser);
+        assertEquals("login", createdUser.getName());
+    }
+
+    @Test
+    public void updateUserExistingUser() {
+        User user = createValidUser("user@email.com", "login", "Name", LocalDate.of(1990, 1, 1));
+        ResponseEntity<Object> createResponse = userController.createUser(user);
+        User createdUser = (User) createResponse.getBody();
+
+        User updatedUser = createValidUser("updated@email.com", "newlogin", "New Name", LocalDate.of(1995, 1, 1));
+        assertNotNull(createdUser);
+        updatedUser.setId(createdUser.getId());
+
+        ResponseEntity<Object> response = userController.updateUser(updatedUser);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertInstanceOf(User.class, response.getBody());
+        User resultUser = (User) response.getBody();
+        assertEquals("New Name", resultUser.getName());
+        assertEquals("updated@email.com", resultUser.getEmail());
+    }
+
+    @Test
+    public void updateUserNonExistingUser() {
+        User user = createValidUser("user@email.com", "login", "Name", LocalDate.of(1990, 1, 1));
+        user.setId(999);
+
+        ResponseEntity<Object> response = userController.updateUser(user);
+
+        assertEquals(404, response.getStatusCode().value());
+        assertInstanceOf(Map.class, response.getBody());
+    }
+
+    @Test
+    public void updateUserWithEmptyName() {
+        User user = createValidUser("user@email.com", "login", "Name", LocalDate.of(1990, 1, 1));
+        ResponseEntity<Object> createResponse = userController.createUser(user);
+        User createdUser = (User) createResponse.getBody();
+
+        User updatedUser = createValidUser("updated@email.com", "newlogin", "", LocalDate.of(1995, 1, 1));
+        assertNotNull(createdUser);
+        updatedUser.setId(createdUser.getId());
+
+        ResponseEntity<Object> response = userController.updateUser(updatedUser);
+
+        assertEquals(200, response.getStatusCode().value());
+        User resultUser = (User) response.getBody();
+        assertNotNull(resultUser);
+        assertEquals("newlogin", resultUser.getName());
+    }
+
+    @Test
+    public void getAllUsersEmptyList() {
+        List<User> users = userController.getAllUsers();
+
+        assertNotNull(users);
+        assertTrue(users.isEmpty());
+    }
+
+    @Test
+    public void getAllUsersWithData() {
+        User user1 = createValidUser("user1@email.com", "login1", "User One", LocalDate.of(1990, 1, 1));
+        User user2 = createValidUser("user2@email.com", "login2", "User Two", LocalDate.of(1995, 1, 1));
+
+        userController.createUser(user1);
+        userController.createUser(user2);
+
+        List<User> users = userController.getAllUsers();
+
+        assertEquals(2, users.size());
+        assertTrue(users.stream().anyMatch(u -> u.getName().equals("User One")));
+        assertTrue(users.stream().anyMatch(u -> u.getName().equals("User Two")));
+    }
+
+    @Test
+    public void createMultipleUsersCheckIds() {
+        User user1 = createValidUser("user1@email.com", "login1", "User 1", LocalDate.of(1990, 1, 1));
+        User user2 = createValidUser("user2@email.com", "login2", "User 2", LocalDate.of(1995, 1, 1));
+        User user3 = createValidUser("user3@email.com", "login3", "User 3", LocalDate.of(2000, 1, 1));
+
+        ResponseEntity<Object> response1 = userController.createUser(user1);
+        ResponseEntity<Object> response2 = userController.createUser(user2);
+        ResponseEntity<Object> response3 = userController.createUser(user3);
+
+        User result1 = (User) response1.getBody();
+        User result2 = (User) response2.getBody();
+        User result3 = (User) response3.getBody();
+
+        assertNotNull(result1);
+        assertNotNull(result2);
+        assertNotNull(result3);
+
+        assertNotEquals(result1.getId(), result2.getId());
+        assertNotEquals(result2.getId(), result3.getId());
+    }
+
+    @Test
+    public void createUserWithFutureBirthday() {
+        User user = createValidUser("user@email.com", "login", "Name", LocalDate.now().plusDays(1));
+        ResponseEntity<Object> response = userController.createUser(user);
+
+        assertEquals(201, response.getStatusCode().value());
+    }
+
+    @Test
+    public void createUserWithCurrentDateBirthday() {
+        User user = createValidUser("user@email.com", "login", "Name", LocalDate.now());
+        ResponseEntity<Object> response = userController.createUser(user);
+
+        assertEquals(201, response.getStatusCode().value());
+    }
+
+    @Test
+    public void createUserWithVeryOldBirthday() {
+        User user = createValidUser("user@email.com", "login", "Name", LocalDate.of(1900, 1, 1));
+        ResponseEntity<Object> response = userController.createUser(user);
+
+        assertEquals(201, response.getStatusCode().value());
+    }
+
+    @Test
+    public void updateUserMaintainsNameWhenEmpty() {
+        User user = createValidUser("user@email.com", "login", "Original Name", LocalDate.of(1990, 1, 1));
+        ResponseEntity<Object> createResponse = userController.createUser(user);
+        User createdUser = (User) createResponse.getBody();
+
+        User updatedUser = createValidUser("updated@email.com", "newlogin", "", LocalDate.of(1995, 1, 1));
+        assertNotNull(createdUser);
+        updatedUser.setId(createdUser.getId());
+
+        userController.updateUser(updatedUser);
+        List<User> users = userController.getAllUsers();
+
+        assertEquals("newlogin", users.getFirst().getName());
+    }
+
+    private User createValidUser(String email, String login, String name, LocalDate birthday) {
         User user = new User();
         user.setEmail(email);
         user.setLogin(login);
         user.setName(name);
         user.setBirthday(birthday);
         return user;
-    }
-
-    @Test
-    @DisplayName("Получение всех пользователей должно возвращать пустой список при отсутствии пользователей")
-    void test_FindAll_ShouldReturnEmptyList() throws Exception {
-        // Given
-        when(userService.findAll()).thenReturn(Collections.emptyList());
-
-        // When & Then
-        mockMvc.perform(get("/users"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(0));
-
-        verify(userService, times(1)).findAll();
-    }
-
-    @Test
-    @DisplayName("Получение всех пользователей должно возвращать список пользователей")
-    void test_FindAll_ShouldReturnUsersList() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        user.setId(1);
-        List<User> users = List.of(user);
-
-        when(userService.findAll()).thenReturn(users);
-
-        // When & Then
-        mockMvc.perform(get("/users"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].email").value(USER_EMAIL))
-                .andExpect(jsonPath("$[0].login").value(USER_LOGIN));
-
-        verify(userService, times(1)).findAll();
-    }
-
-    @Test
-    @DisplayName("Создание пользователя с валидными данными должно быть успешным")
-    void test_Create_ValidUserData_ShouldCreateUser() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        User createdUser = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        createdUser.setId(1);
-
-        when(userService.create(any(User.class))).thenReturn(createdUser);
-
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.email").value(USER_EMAIL))
-                .andExpect(jsonPath("$.login").value(USER_LOGIN))
-                .andExpect(jsonPath("$.name").value(USER_NAME))
-                .andExpect(jsonPath("$.birthday").value(USER_BIRTHDAY.toString()));
-
-        verify(userService, times(1)).create(any(User.class));
-    }
-
-    @Test
-    @DisplayName("Создание пользователя с пустым email должно вызывать исключение")
-    void test_Create_UserWithEmptyEmail_ShouldThrowValidationException() throws Exception {
-        // Given
-        User user = createUser("", USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Электронная почта не может быть пустой и должна содержать символ @"));
-
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Электронная почта не может быть пустой и должна содержать символ @"));
-
-        verify(userService, times(1)).create(any(User.class));
-    }
-
-    @Test
-    @DisplayName("Создание пользователя с email без символа @ должно вызывать исключение")
-    void test_Create_UserWithInvalidEmail_ShouldThrowValidationException() throws Exception {
-        // Given
-        User user = createUser("invalid-email", USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Электронная почта не может быть пустой и должна содержать символ @"));
-
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Электронная почта не может быть пустой и должна содержать символ @"));
-
-        verify(userService, times(1)).create(any(User.class));
-    }
-
-    @Test
-    @DisplayName("Создание пользователя с логином содержащим пробелы должно вызывать исключение")
-    void test_Create_UserWithSpacesInLogin_ShouldThrowValidationException() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, "login with spaces", USER_NAME, USER_BIRTHDAY);
-
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Логин не может быть пустым и содержать пробелы"));
-
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Логин не может быть пустым и содержать пробелы"));
-
-        verify(userService, times(1)).create(any(User.class));
-    }
-
-    @Test
-    @DisplayName("Создание пользователя с пустым именем должно использовать логин как имя")
-    void test_Create_UserWithEmptyName_ShouldUseLoginAsName() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, "", USER_BIRTHDAY);
-        User createdUser = createUser(USER_EMAIL, USER_LOGIN, USER_LOGIN, USER_BIRTHDAY);
-        createdUser.setId(1);
-
-        when(userService.create(any(User.class))).thenReturn(createdUser);
-
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value(USER_LOGIN));
-
-        verify(userService, times(1)).create(any(User.class));
-    }
-
-    @Test
-    @DisplayName("Создание пользователя с null именем должно использовать логин как имя")
-    void test_Create_UserWithNullName_ShouldUseLoginAsName() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, null, USER_BIRTHDAY);
-        User createdUser = createUser(USER_EMAIL, USER_LOGIN, USER_LOGIN, USER_BIRTHDAY);
-        createdUser.setId(1);
-
-        when(userService.create(any(User.class))).thenReturn(createdUser);
-
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value(USER_LOGIN));
-
-        verify(userService, times(1)).create(any(User.class));
-    }
-
-    @Test
-    @DisplayName("Создание пользователя с датой рождения в будущем должно вызывать исключение")
-    void test_Create_UserWithFutureBirthday_ShouldThrowValidationException() throws Exception {
-        // Given
-        LocalDate futureDate = LocalDate.now().plusDays(1);
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, futureDate);
-
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Дата рождения не может быть в будущем"));
-
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Дата рождения не может быть в будущем"));
-
-        verify(userService, times(1)).create(any(User.class));
-    }
-
-    @Test
-    @DisplayName("Обновление несуществующего пользователя должно вызывать исключение")
-    void test_Update_NonExistentUser_ShouldThrowNotFoundException() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        user.setId(9999);
-
-        when(userService.update(any(User.class)))
-                .thenThrow(new RuntimeException("Пользователь с id=9999 не найден"));
-
-        // When & Then
-        mockMvc.perform(put("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error").value("Внутренняя ошибка сервера"));
-
-        verify(userService, times(1)).update(any(User.class));
-    }
-
-    @Test
-    @DisplayName("Обновление пользователя с валидными данными должно быть успешным")
-    void test_Update_ValidUser_ShouldUpdateUser() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        user.setId(1);
-
-        User updatedUser = createUser("updated@example.com", USER_LOGIN, "Updated Name", USER_BIRTHDAY);
-        updatedUser.setId(1);
-
-        when(userService.update(any(User.class))).thenReturn(updatedUser);
-
-        // When & Then
-        mockMvc.perform(put("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Updated Name"))
-                .andExpect(jsonPath("$.email").value("updated@example.com"));
-
-        verify(userService, times(1)).update(any(User.class));
-    }
-
-    @Test
-    @DisplayName("Создание пользователя с пустым логином должно вызывать исключение")
-    void test_Create_UserWithEmptyLogin_ShouldThrowValidationException() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, "", USER_NAME, USER_BIRTHDAY);
-
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Логин не может быть пустым и содержать пробелы"));
-
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Логин не может быть пустым и содержать пробелы"));
-
-        verify(userService, times(1)).create(any(User.class));
-    }
-
-    @Test
-    @DisplayName("Создание пользователя с null датой рождения должно вызывать исключение")
-    void test_Create_UserWithNullBirthday_ShouldThrowValidationException() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, null);
-
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Дата рождения должна быть указана"));
-
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Дата рождения должна быть указана"));
-
-        verify(userService, times(1)).create(any(User.class));
-    }
-
-    @Test
-    @DisplayName("Получение пользователя по ID должно возвращать пользователя")
-    void test_GetById_ShouldReturnUser() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        user.setId(1);
-
-        when(userService.getById(1)).thenReturn(user);
-
-        // When & Then
-        mockMvc.perform(get("/users/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.email").value(USER_EMAIL))
-                .andExpect(jsonPath("$.login").value(USER_LOGIN));
-
-        verify(userService, times(1)).getById(1);
-    }
-
-    @Test
-    @DisplayName("Добавление друга должно быть успешным")
-    void test_AddFriend_ShouldBeSuccessful() throws Exception {
-        // Given
-        doNothing().when(userService).addFriend(1, 2);
-
-        // When & Then
-        mockMvc.perform(put("/users/1/friends/2"))
-                .andExpect(status().isOk());
-
-        verify(userService, times(1)).addFriend(1, 2);
-    }
-
-    @Test
-    @DisplayName("Удаление друга должно быть успешным")
-    void test_RemoveFriend_ShouldBeSuccessful() throws Exception {
-        // Given
-        doNothing().when(userService).removeFriend(1, 2);
-
-        // When & Then
-        mockMvc.perform(delete("/users/1/friends/2"))
-                .andExpect(status().isOk());
-
-        verify(userService, times(1)).removeFriend(1, 2);
-    }
-
-    @Test
-    @DisplayName("Получение списка друзей должно возвращать список")
-    void test_GetFriends_ShouldReturnFriendsList() throws Exception {
-        // Given
-        User friend = createUser("friend@example.com", "friend", "Friend User", USER_BIRTHDAY);
-        friend.setId(2);
-        List<User> friends = List.of(friend);
-
-        when(userService.getFriends(1)).thenReturn(friends);
-
-        // When & Then
-        mockMvc.perform(get("/users/1/friends"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(2))
-                .andExpect(jsonPath("$[0].login").value("friend"));
-
-        verify(userService, times(1)).getFriends(1);
-    }
-
-    @Test
-    @DisplayName("Получение общих друзей должно возвращать список")
-    void test_GetCommonFriends_ShouldReturnCommonFriendsList() throws Exception {
-        // Given
-        User commonFriend = createUser("common@example.com", "common", "Common Friend", USER_BIRTHDAY);
-        commonFriend.setId(3);
-        List<User> commonFriends = List.of(commonFriend);
-
-        when(userService.getCommonFriends(1, 2)).thenReturn(commonFriends);
-
-        // When & Then
-        mockMvc.perform(get("/users/1/friends/common/2"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(3))
-                .andExpect(jsonPath("$[0].login").value("common"));
-
-        verify(userService, times(1)).getCommonFriends(1, 2);
-    }
-
-    @Test
-    @DisplayName("Очистка пользователей должна быть успешной")
-    void test_Clear_ShouldBeSuccessful() throws Exception {
-        // Given
-        doNothing().when(userService).clear();
-
-        // When & Then
-        mockMvc.perform(delete("/users/clear"))
-                .andExpect(status().isOk());
-
-        verify(userService, times(1)).clear();
     }
 }

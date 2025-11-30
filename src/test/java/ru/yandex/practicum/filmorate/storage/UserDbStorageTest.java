@@ -1,15 +1,11 @@
-package ru.yandex.practicum.filmorate.storage;
+package ru.yandex.practicum.filmorate.storage.user;
 
-import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.test.context.jdbc.Sql;
+import org.springframework.context.annotation.Import;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.db.UserDbStorage;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,99 +14,97 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @JdbcTest
-@AutoConfigureTestDatabase
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
-@ComponentScan(basePackages = {"ru.yandex.practicum.filmorate.storage.db"})
+@Import({UserDbStorage.class})
 class UserDbStorageTest {
 
-    private final UserDbStorage userStorage;
+    @Autowired
+    private UserDbStorage userStorage;
 
     private User testUser;
 
-//    @BeforeEach
-//    void setUp() {
-//        testUser = new User();
-//        testUser.setEmail("test@example.com");
-//        testUser.setLogin("testlogin");
-//        testUser.setName("Test User");
-//        testUser.setBirthday(LocalDate.of(1990, 1, 1));
-//    }
+    @BeforeEach
+    public void setUp() {
+        testUser = new User();
+        testUser.setEmail("test@mail.ru");
+        testUser.setLogin("testlogin");
+        testUser.setName("Test User");
+        testUser.setBirthday(LocalDate.of(1990, 1, 1));
+    }
 
     @Test
-    void testCreateUser() {
-        // Given
-        User newUser = new User();
-        newUser.setEmail("newuser@example.com");
-        newUser.setLogin("newuser");
-        newUser.setName("New User");
-        newUser.setBirthday(LocalDate.of(1995, 5, 15));
+    public void testCreateUser() {
+        User createdUser = userStorage.create(testUser);
 
-        // When
-        User createdUser = userStorage.create(newUser);
-
-        // Then
         assertThat(createdUser).isNotNull();
-        assertThat(createdUser.getId()).isNotNull();
-        assertThat(createdUser.getEmail()).isEqualTo("newuser@example.com");
+        assertThat(createdUser.getId()).isPositive();
+        assertThat(createdUser.getEmail()).isEqualTo("test@mail.ru");
+        assertThat(createdUser.getLogin()).isEqualTo("testlogin");
     }
 
     @Test
-    void testFindUserById() {
-        // When
-        Optional<User> userOptional = userStorage.findById(1);
+    public void testGetUserById() {
+        User createdUser = userStorage.create(testUser);
+        Optional<User> foundUser = userStorage.getById(createdUser.getId());
 
-        // Then
-        assertThat(userOptional).isPresent();
+        assertThat(foundUser).isPresent();
+        assertThat(foundUser.get().getEmail()).isEqualTo("test@mail.ru");
     }
 
     @Test
-    void testFindAllUsers() {
-        // When
-        List<User> users = userStorage.findAll();
+    public void testGetAllUsers() {
+        userStorage.create(testUser);
 
-        // Then
-        assertThat(users).hasSize(3);
-        assertThat(users).extracting(User::getLogin)
-                .containsExactly("user1", "user2", "user3");
+        User anotherUser = new User();
+        anotherUser.setEmail("another@mail.ru");
+        anotherUser.setLogin("anotherlogin");
+        anotherUser.setName("Another User");
+        anotherUser.setBirthday(LocalDate.of(1995, 1, 1));
+        userStorage.create(anotherUser);
+
+        List<User> users = userStorage.getAll();
+
+        assertThat(users).hasSize(2);
+        assertThat(users).extracting(User::getEmail)
+                .containsExactlyInAnyOrder("test@mail.ru", "another@mail.ru");
     }
 
     @Test
-    void testUpdateUser() {
-        // Given
-        User userToUpdate = userStorage.findById(1).get();
-        userToUpdate.setName("Updated Name");
-        userToUpdate.setEmail("updated@example.com");
+    public void testUpdateUser() {
+        User createdUser = userStorage.create(testUser);
 
-        // When
-        User updatedUser = userStorage.update(userToUpdate);
+        createdUser.setName("Updated Name");
+        createdUser.setEmail("updated@mail.ru");
 
-        // Then
+        User updatedUser = userStorage.update(createdUser);
+
         assertThat(updatedUser.getName()).isEqualTo("Updated Name");
-        assertThat(updatedUser.getEmail()).isEqualTo("updated@example.com");
+        assertThat(updatedUser.getEmail()).isEqualTo("updated@mail.ru");
 
-        // Verify in database
-        Optional<User> foundUser = userStorage.findById(1);
+        Optional<User> foundUser = userStorage.getById(createdUser.getId());
         assertThat(foundUser).isPresent();
         assertThat(foundUser.get().getName()).isEqualTo("Updated Name");
-        assertThat(foundUser.get().getEmail()).isEqualTo("updated@example.com");
     }
 
     @Test
-    void testDeleteUser() {
-        // Given
-        assertThat(userStorage.existsById(1)).isTrue();
+    public void testUserExists() {
+        User createdUser = userStorage.create(testUser);
 
-        // When
-        userStorage.delete(1);
+        boolean exists = userStorage.exists(createdUser.getId());
+        boolean notExists = userStorage.exists(999);
 
-        // Then
-        assertThat(userStorage.existsById(1)).isFalse();
+        assertThat(exists).isTrue();
+        assertThat(notExists).isFalse();
     }
 
     @Test
-    void testExistsById() {
-        // Then
-        assertThat(userStorage.existsById(1)).isTrue();
-        assertThat(userStorage.existsById(999)).isFalse();
+    public void testDeleteUser() {
+        User createdUser = userStorage.create(testUser);
+
+        boolean existsBefore = userStorage.exists(createdUser.getId());
+        userStorage.delete(createdUser.getId());
+        boolean existsAfter = userStorage.exists(createdUser.getId());
+
+        assertThat(existsBefore).isTrue();
+        assertThat(existsAfter).isFalse();
     }
 }
