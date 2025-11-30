@@ -53,6 +53,8 @@ Thumbs.db
 
 # Logs
 *.log
+*.log.*
+*.gz
 
 # Temporary files
 *.tmp
@@ -62,5 +64,9 @@ Thumbs.db
 application.properties.original
 
 # H2 database files
-*.db
+*.mv.db
 *.trace.db
+db/
+
+# Application specific
+filmorate.log.*
