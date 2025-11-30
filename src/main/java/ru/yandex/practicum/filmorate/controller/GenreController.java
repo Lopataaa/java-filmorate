@@ -25,7 +25,6 @@ public class GenreController {
 
     @GetMapping("/{id}")
     public Genre getGenreById(@PathVariable int id) {
-        return genreStorage.getGenreById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
+        return genreStorage.getGenreById(id).orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
     }
 }

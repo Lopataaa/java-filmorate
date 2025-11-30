@@ -61,3 +61,9 @@ CREATE TABLE IF NOT EXISTS likes (
     FOREIGN KEY (film_id) REFERENCES films(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    CREATE INDEX IF NOT EXISTS idx_films_mpa_id ON films(mpa_id);
+    CREATE INDEX IF NOT EXISTS idx_film_genres_film_id ON film_genres(film_id);
+    CREATE INDEX IF NOT EXISTS idx_likes_film_id ON likes(film_id);
+    CREATE INDEX IF NOT EXISTS idx_likes_user_id ON likes(user_id);
+    CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id);
