@@ -5,7 +5,7 @@ Template repository for Filmorate project.
 
 ## Схема базы данных
 
-![Database Schema](новое-название-файла.png)
+![Database Schema](database-schema java-filmorate.png)
 
 ## Основные таблицы:
 
