@@ -36,7 +36,6 @@ public class FilmController extends BaseController<Film> {
 
     @GetMapping
     public List<Film> getAllFilms() {
-        log.info("Получен запрос на получение всех фильмов. Количество фильмов: {}", filmService.getAllFilms().size());
         return filmService.getAllFilms();
     }
 
@@ -46,7 +45,6 @@ public class FilmController extends BaseController<Film> {
             Film film = filmService.getFilmById(id);
             return ResponseEntity.ok(film);
         } catch (IllegalArgumentException e) {
-            log.error("Фильм с id {} не найден", id);
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
         }
     }
@@ -55,14 +53,8 @@ public class FilmController extends BaseController<Film> {
     public ResponseEntity<Object> addLike(@PathVariable int id, @PathVariable int userId) {
         try {
             filmService.addLike(id, userId);
-            log.info("Пользователь {} поставил лайк фильму {}", userId, id);
-            return ResponseEntity.ok(Map.of(
-                    "message", "Лайк успешно добавлен",
-                    "filmId", id,
-                    "userId", userId
-            ));
+            return ResponseEntity.ok(Map.of("message", "Лайк успешно добавлен", "filmId", id, "userId", userId));
         } catch (IllegalArgumentException e) {
-            log.error("Ошибка при добавлении лайка: {}", e.getMessage());
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
         }
     }
@@ -71,50 +63,40 @@ public class FilmController extends BaseController<Film> {
     public ResponseEntity<Object> removeLike(@PathVariable int id, @PathVariable int userId) {
         try {
             filmService.removeLike(id, userId);
-            log.info("Пользователь {} удалил лайк с фильма {}", userId, id);
             return ResponseEntity.ok().build();
         } catch (IllegalArgumentException e) {
-            log.error("Ошибка при удалении лайка: {}", e.getMessage());
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
         }
     }
 
     @GetMapping("/popular")
     public List<Film> getPopularFilms(@RequestParam(name = "count", defaultValue = "10") int count) {
-        log.info("Получен запрос на получение {} популярных фильмов", count);
         return filmService.getPopularFilms(count);
     }
 
     @Override
     protected ResponseEntity<Object> addEntity(Film film) {
-        log.info("Получен запрос на добавление фильма: {}", film);
         try {
             validateEntity(film);
             Film createdFilm = filmService.createFilm(film);
-            log.info("Фильм успешно добавлен: {}", createdFilm);
             return ResponseEntity.ok(createdFilm);
         } catch (ValidationException e) {
-            log.warn("Ошибка валидации при добавлении фильма: {}", e.getMessage());
             return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
 
     @Override
     protected ResponseEntity<Object> updateEntity(Film film) {
-        log.info("Получен запрос на обновление фильма: {}", film);
 
         validateEntity(film);
 
         Film updatedFilm = filmService.updateFilm(film);
-        log.info("Фильм успешно обновлен: {}", updatedFilm);
         return ResponseEntity.ok(updatedFilm);
     }
 
     @Override
     protected void validateEntity(Film film) throws ValidationException {
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
-            log.error("Ошибка валидации: дата релиза {} раньше минимальной допустимой даты {}",
-                    film.getReleaseDate(), MIN_RELEASE_DATE);
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
     }
