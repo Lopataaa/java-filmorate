@@ -1,103 +1,98 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import jakarta.validation.Valid;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.dto.FilmDto;
+import ru.yandex.practicum.filmorate.dto.FilmCreateDto;
+import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.service.FilmService;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import ru.yandex.practicum.filmorate.mapper.FilmMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
+import jakarta.validation.Valid;
 
-@Slf4j
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/films")
-public class FilmController extends BaseController<Film> {
+public class FilmController {
+
     private final FilmService filmService;
-    private static final LocalDate MIN_RELEASE_DATE = LocalDate.of(1895, 12, 28);
+    private final FilmMapper filmMapper;
 
-    public FilmController(FilmService filmService) {
+    @Autowired
+    public FilmController(FilmService filmService, FilmMapper filmMapper) {
         this.filmService = filmService;
-    }
-
-    @PostMapping
-    public ResponseEntity<Object> addFilm(@Valid @RequestBody Film film) {
-        return addEntity(film);
-    }
-
-    @PutMapping
-    public ResponseEntity<Object> updateFilm(@Valid @RequestBody Film film) {
-        return updateEntity(film);
+        this.filmMapper = filmMapper;
     }
 
     @GetMapping
-    public List<Film> getAllFilms() {
-        return filmService.getAllFilms();
+    public List<FilmDto> getAllFilms() {
+        return filmService.getAllFilms().stream()
+                .map(filmMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Object> getFilm(@PathVariable int id) {
-        try {
-            Film film = filmService.getFilmById(id);
-            return ResponseEntity.ok(film);
-        } catch (IllegalArgumentException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
+    public FilmDto getFilm(@PathVariable int id) {
+        Film film = filmService.getFilmById(id);
+        return filmMapper.toDto(film);
+    }
+
+    @PostMapping
+    public FilmDto createFilm(@Valid @RequestBody FilmCreateDto filmCreateDto) {
+        Film film = filmMapper.toEntity(filmCreateDto);
+        Film createdFilm = filmService.createFilm(film);
+        return filmMapper.toDto(createdFilm);
+    }
+
+    @PutMapping
+    public FilmDto updateFilm(@Valid @RequestBody FilmUpdateDto filmUpdateDto) {
+        Film existingFilm = filmService.getFilmById(filmUpdateDto.getId());
+
+        existingFilm.setName(filmUpdateDto.getName());
+        existingFilm.setDescription(filmUpdateDto.getDescription());
+        existingFilm.setReleaseDate(filmUpdateDto.getReleaseDate());
+        existingFilm.setDuration(filmUpdateDto.getDuration());
+
+        if (filmUpdateDto.getMpaId() != 0) {
+            Mpa mpa = new Mpa();
+            mpa.setId(filmUpdateDto.getMpaId());
+            existingFilm.setMpa(mpa);
         }
+
+        if (filmUpdateDto.getGenreIds() != null) {
+            Set<Genre> genres = filmUpdateDto.getGenreIds().stream()
+                    .map(genreId -> {
+                        Genre genre = new Genre();
+                        genre.setId(genreId);
+                        return genre;
+                    })
+                    .collect(Collectors.toSet());
+            existingFilm.setGenres(genres);
+        }
+
+        Film savedFilm = filmService.updateFilm(existingFilm);
+        return filmMapper.toDto(savedFilm);
     }
 
     @PutMapping("/{id}/like/{userId}")
-    public ResponseEntity<Object> addLike(@PathVariable int id, @PathVariable int userId) {
-        try {
-            filmService.addLike(id, userId);
-            return ResponseEntity.ok(Map.of("message", "Лайк успешно добавлен", "filmId", id, "userId", userId));
-        } catch (IllegalArgumentException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
+    public void addLike(@PathVariable int id, @PathVariable int userId) {
+        filmService.addLike(id, userId);
     }
 
     @DeleteMapping("/{id}/like/{userId}")
-    public ResponseEntity<Object> removeLike(@PathVariable int id, @PathVariable int userId) {
-        try {
-            filmService.removeLike(id, userId);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
+    public void removeLike(@PathVariable int id, @PathVariable int userId) {
+        filmService.removeLike(id, userId);
     }
 
     @GetMapping("/popular")
-    public List<Film> getPopularFilms(@RequestParam(name = "count", defaultValue = "10") int count) {
-        return filmService.getPopularFilms(count);
-    }
-
-    @Override
-    protected ResponseEntity<Object> addEntity(Film film) {
-        try {
-            validateEntity(film);
-            Film createdFilm = filmService.createFilm(film);
-            return ResponseEntity.ok(createdFilm);
-        } catch (ValidationException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    @Override
-    protected ResponseEntity<Object> updateEntity(Film film) {
-
-        validateEntity(film);
-
-        Film updatedFilm = filmService.updateFilm(film);
-        return ResponseEntity.ok(updatedFilm);
-    }
-
-    @Override
-    protected void validateEntity(Film film) throws ValidationException {
-        if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
-            throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
-        }
+    public List<FilmDto> getPopularFilms(@RequestParam(defaultValue = "10") int count) {
+        List<Film> popularFilms = filmService.getPopularFilms(count);
+        return new java.util.ArrayList<>(filmMapper.toDtoCollection(popularFilms));
     }
 }

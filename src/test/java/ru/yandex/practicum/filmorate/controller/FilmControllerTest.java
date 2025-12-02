@@ -5,8 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.ResponseEntity;
-import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.dto.FilmCreateDto;
+import ru.yandex.practicum.filmorate.dto.FilmDto;
+import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
 import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
@@ -20,7 +21,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 @JdbcTest
-@Import({FilmController.class, FilmService.class, UserService.class, FilmDbStorage.class, UserDbStorage.class, MpaDbStorage.class, GenreDbStorage.class})
+@Import({FilmController.class, FilmService.class, UserService.class, FilmDbStorage.class,
+        UserDbStorage.class, MpaDbStorage.class, GenreDbStorage.class})
 class FilmControllerTest {
 
     @Autowired
@@ -30,69 +32,95 @@ class FilmControllerTest {
     @DisplayName("Добавление фильма с валидными данными")
     public void addFilmValidData() {
         // Given
-        Film film = createValidFilm("Test Film", "Test Description", LocalDate.of(2000, 1, 1), 120);
+        FilmCreateDto filmDto = FilmCreateDto.builder()
+                .name("Test Film")
+                .description("Test Description")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpaId(1)  // ID существующего MPA
+                .build();
 
         // When
-        ResponseEntity<Object> response = filmController.addFilm(film);
+        FilmDto response = filmController.createFilm(filmDto);
 
         // Then
-        assertEquals(200, response.getStatusCode().value());
-        assertNotNull(response.getBody());
-        Film createdFilm = (Film) response.getBody();
-        assertEquals("Test Film", createdFilm.getName());
+        assertNotNull(response);
+        assertEquals("Test Film", response.getName());
+        assertEquals("Test Description", response.getDescription());
+        assertTrue(response.getId() > 0);
     }
 
     @Test
     @DisplayName("Добавление фильма с невалидной датой релиза")
     public void addFilmInvalidReleaseDate() {
         // Given
-        Film film = createValidFilm("Old Film", "Very old film", LocalDate.of(1890, 1, 1), 90);
+        FilmCreateDto filmDto = FilmCreateDto.builder()
+                .name("Old Film")
+                .description("Very old film")
+                .releaseDate(LocalDate.of(1890, 1, 1))
+                .duration(90)
+                .mpaId(1)
+                .build();
 
-        // When
-        ResponseEntity<Object> response = filmController.addFilm(film);
-
-        // Then
-        assertTrue(response.getStatusCode().is4xxClientError());
+        // When & Then - должен выбросить исключение валидации
+        assertThrows(Exception.class, () -> filmController.createFilm(filmDto));
     }
 
     @Test
     @DisplayName("Обновление существующего фильма")
     public void updateFilmExistingFilm() {
-        // Given
-        Film film = createValidFilm("Original", "Original desc", LocalDate.of(2000, 1, 1), 120);
-        ResponseEntity<Object> createResponse = filmController.addFilm(film);
-        Film createdFilm = (Film) createResponse.getBody();
+        FilmCreateDto createDto = FilmCreateDto.builder()
+                .name("Original")
+                .description("Original desc")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpaId(1)
+                .build();
 
-        Film updatedFilm = createValidFilm("Updated", "Updated desc", LocalDate.of(2001, 1, 1), 150);
+        FilmDto createdFilm = filmController.createFilm(createDto);
         assertNotNull(createdFilm);
-        updatedFilm.setId(createdFilm.getId());
+
+        FilmUpdateDto updateDto = FilmUpdateDto.builder()
+                .id(createdFilm.getId())
+                .name("Updated")
+                .description("Updated desc")
+                .releaseDate(LocalDate.of(2001, 1, 1))
+                .duration(150)
+                .mpaId(2)  // новый MPA
+                .build();
 
         // When
-        ResponseEntity<Object> response = filmController.updateFilm(updatedFilm);
+        FilmDto updatedFilm = filmController.updateFilm(updateDto);
 
         // Then
-        assertEquals(200, response.getStatusCode().value());
-        Film resultFilm = (Film) response.getBody();
-        assertNotNull(resultFilm);
-        assertEquals("Updated", resultFilm.getName());
+        assertNotNull(updatedFilm);
+        assertEquals("Updated", updatedFilm.getName());
+        assertEquals("Updated desc", updatedFilm.getDescription());
+        assertEquals(150, updatedFilm.getDuration());
     }
 
     @Test
     @DisplayName("Обновление несуществующего фильма")
     public void updateFilmNonExistingFilm() {
         // Given
-        Film film = createValidFilm("Non Existing", "Description", LocalDate.of(2000, 1, 1), 120);
-        film.setId(999);
+        FilmUpdateDto updateDto = FilmUpdateDto.builder()
+                .id(999)  // Несуществующий ID
+                .name("Non Existing")
+                .description("Description")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpaId(1)
+                .build();
 
-        // When & Then
-        assertThrows(RuntimeException.class, () -> filmController.updateFilm(film));
+        // When & Then - должен выбросить исключение
+        assertThrows(Exception.class, () -> filmController.updateFilm(updateDto));
     }
 
     @Test
     @DisplayName("Получение всех фильмов из пустого списка")
     public void getAllFilmsEmptyList() {
         // When
-        List<Film> films = filmController.getAllFilms();
+        List<FilmDto> films = filmController.getAllFilms();
 
         // Then
         assertNotNull(films);
@@ -103,14 +131,27 @@ class FilmControllerTest {
     @DisplayName("Получение всех фильмов с данными")
     public void getAllFilmsWithData() {
         // Given
-        Film film1 = createValidFilm("Film 1", "Desc 1", LocalDate.of(2000, 1, 1), 120);
-        Film film2 = createValidFilm("Film 2", "Desc 2", LocalDate.of(2001, 1, 1), 150);
+        FilmCreateDto film1 = FilmCreateDto.builder()
+                .name("Film 1")
+                .description("Desc 1")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpaId(1)
+                .build();
 
-        filmController.addFilm(film1);
-        filmController.addFilm(film2);
+        FilmCreateDto film2 = FilmCreateDto.builder()
+                .name("Film 2")
+                .description("Desc 2")
+                .releaseDate(LocalDate.of(2001, 1, 1))
+                .duration(150)
+                .mpaId(1)
+                .build();
+
+        filmController.createFilm(film1);
+        filmController.createFilm(film2);
 
         // When
-        List<Film> films = filmController.getAllFilms();
+        List<FilmDto> films = filmController.getAllFilms();
 
         // Then
         assertEquals(2, films.size());
@@ -120,18 +161,34 @@ class FilmControllerTest {
     @DisplayName("Добавление нескольких фильмов и проверка уникальности ID")
     public void addMultipleFilmsCheckIds() {
         // Given
-        Film film1 = createValidFilm("Film 1", "Desc 1", LocalDate.of(2000, 1, 1), 120);
-        Film film2 = createValidFilm("Film 2", "Desc 2", LocalDate.of(2001, 1, 1), 150);
-        Film film3 = createValidFilm("Film 3", "Desc 3", LocalDate.of(2002, 1, 1), 180);
+        FilmCreateDto film1 = FilmCreateDto.builder()
+                .name("Film 1")
+                .description("Desc 1")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpaId(1)
+                .build();
+
+        FilmCreateDto film2 = FilmCreateDto.builder()
+                .name("Film 2")
+                .description("Desc 2")
+                .releaseDate(LocalDate.of(2001, 1, 1))
+                .duration(150)
+                .mpaId(1)
+                .build();
+
+        FilmCreateDto film3 = FilmCreateDto.builder()
+                .name("Film 3")
+                .description("Desc 3")
+                .releaseDate(LocalDate.of(2002, 1, 1))
+                .duration(180)
+                .mpaId(1)
+                .build();
 
         // When
-        ResponseEntity<Object> response1 = filmController.addFilm(film1);
-        ResponseEntity<Object> response2 = filmController.addFilm(film2);
-        ResponseEntity<Object> response3 = filmController.addFilm(film3);
-
-        Film result1 = (Film) response1.getBody();
-        Film result2 = (Film) response2.getBody();
-        Film result3 = (Film) response3.getBody();
+        FilmDto result1 = filmController.createFilm(film1);
+        FilmDto result2 = filmController.createFilm(film2);
+        FilmDto result3 = filmController.createFilm(film3);
 
         // Then
         assertNotNull(result1);
@@ -140,14 +197,30 @@ class FilmControllerTest {
 
         assertNotEquals(result1.getId(), result2.getId());
         assertNotEquals(result2.getId(), result3.getId());
+        assertNotEquals(result1.getId(), result3.getId());
     }
 
-    private Film createValidFilm(String name, String description, LocalDate releaseDate, int duration) {
-        Film film = new Film();
-        film.setName(name);
-        film.setDescription(description);
-        film.setReleaseDate(releaseDate);
-        film.setDuration(duration);
-        return film;
+    @Test
+    @DisplayName("Получение фильма по ID")
+    public void getFilmById() {
+        // Given
+        FilmCreateDto createDto = FilmCreateDto.builder()
+                .name("Test Film")
+                .description("Test Description")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpaId(1)
+                .build();
+
+        FilmDto createdFilm = filmController.createFilm(createDto);
+
+        // When
+        FilmDto foundFilm = filmController.getFilm(createdFilm.getId());
+
+        // Then
+        assertNotNull(foundFilm);
+        assertEquals(createdFilm.getId(), foundFilm.getId());
+        assertEquals("Test Film", foundFilm.getName());
     }
+
 }

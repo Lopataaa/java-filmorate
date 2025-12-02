@@ -1,130 +1,83 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import jakarta.validation.Valid;
+import ru.yandex.practicum.filmorate.dto.UserDto;
+import ru.yandex.practicum.filmorate.dto.UserCreateDto;
+import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.service.UserService;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import ru.yandex.practicum.filmorate.mapper.UserMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import jakarta.validation.Valid;
 
-@Slf4j
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/users")
-public class UserController extends BaseController<User> {
-    private final UserService userService;
+public class UserController {
 
-    public UserController(UserService userService) {
+    private final UserService userService;
+    private final UserMapper userMapper;
+
+    @Autowired
+    public UserController(UserService userService, UserMapper userMapper) {
         this.userService = userService;
+        this.userMapper = userMapper;
     }
 
     @PostMapping
-    public ResponseEntity<Object> createUser(@Valid @RequestBody User user) {
-        return addEntity(user);
+    public UserDto createUser(@Valid @RequestBody UserCreateDto userCreateDto) {
+        User user = userMapper.toEntity(userCreateDto);
+        User createdUser = userService.createUser(user);
+        return userMapper.toDto(createdUser);
     }
 
     @PutMapping
-    public ResponseEntity<Object> updateUser(@Valid @RequestBody User user) {
-        return updateEntity(user);
+    public UserDto updateUser(@Valid @RequestBody UserUpdateDto userUpdateDto) {
+        User existingUser = userService.getUserById(userUpdateDto.getId());
+        User updatedUser = userMapper.toEntity(userUpdateDto, existingUser);
+        User savedUser = userService.updateUser(updatedUser);
+        return userMapper.toDto(savedUser);
     }
 
     @GetMapping
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
+    public List<UserDto> getAllUsers() {
+        return userService.getAllUsers().stream()
+                .map(userMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Object> getUser(@PathVariable int id) {
-        try {
-            User user = userService.getUserById(id);
-            return ResponseEntity.ok(user);
-        } catch (IllegalArgumentException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
+    public UserDto getUser(@PathVariable int id) {
+        User user = userService.getUserById(id);
+        return userMapper.toDto(user);
     }
 
     @PutMapping("/{id}/friends/{friendId}")
-    public ResponseEntity<Object> addFriend(@PathVariable int id, @PathVariable int friendId) {
-        try {
-            userService.addFriend(id, friendId);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
+    public void addFriend(@PathVariable int id, @PathVariable int friendId) {
+        userService.addFriend(id, friendId);
     }
 
     @DeleteMapping("/{id}/friends/{friendId}")
-    public ResponseEntity<Object> removeFriend(@PathVariable int id, @PathVariable int friendId) {
-        try {
-            userService.removeFriend(id, friendId);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
+    public void removeFriend(@PathVariable int id, @PathVariable int friendId) {
+        userService.removeFriend(id, friendId);
     }
 
     @GetMapping("/{id}/friends")
-    public ResponseEntity<Object> getFriends(@PathVariable int id) {
-        try {
-            userService.getUserById(id);
-
-            List<User> friends = userService.getFriends(id);
-            return ResponseEntity.ok(friends);
-        } catch (IllegalArgumentException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
+    public List<UserDto> getFriends(@PathVariable int id) {
+        List<User> friends = userService.getFriends(id);
+        Collection<UserDto> dtoCollection = userMapper.toDtoCollection(friends);
+        return new ArrayList<>(dtoCollection);
     }
 
     @GetMapping("/{id}/friends/common/{otherId}")
-    public ResponseEntity<Object> getCommonFriends(@PathVariable int id, @PathVariable int otherId) {
-        try {
-            List<User> commonFriends = userService.getCommonFriends(id, otherId);
-
-            return ResponseEntity.ok(commonFriends);
-        } catch (IllegalArgumentException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
-    }
-
-    @Override
-    protected ResponseEntity<Object> addEntity(User user) {
-        try {
-            validateEntity(user);
-            processUserName(user);
-            User createdUser = userService.createUser(user);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
-        } catch (ValidationException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    @Override
-    protected ResponseEntity<Object> updateEntity(User user) {
-        try {
-            validateEntity(user);
-            processUserName(user);
-
-            if (!userService.userExists(user.getId())) {
-                return createErrorResponse("Пользователь с id " + user.getId() + " не найден", HttpStatus.NOT_FOUND);
-            }
-
-            User updatedUser = userService.updateUser(user);
-            return ResponseEntity.ok(updatedUser);
-        } catch (ValidationException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    @Override
-    protected void validateEntity(User user) throws ValidationException {
-    }
-
-    private void processUserName(User user) {
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(user.getLogin());
-        }
+    public List<UserDto> getCommonFriends(@PathVariable int id, @PathVariable int otherId) {
+        List<User> commonFriends = userService.getCommonFriends(id, otherId);
+        Collection<UserDto> dtoCollection = userMapper.toDtoCollection(commonFriends);
+        return new ArrayList<>(dtoCollection);
     }
 }

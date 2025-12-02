@@ -6,8 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.ResponseEntity;
-import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.dto.UserCreateDto;
+import ru.yandex.practicum.filmorate.dto.UserDto;
+import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
 import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
@@ -17,12 +18,12 @@ import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @JdbcTest
-@Import({FilmController.class, UserController.class, FilmService.class, UserService.class, FilmDbStorage.class, UserDbStorage.class, MpaDbStorage.class, GenreDbStorage.class})
+@Import({FilmController.class, UserController.class, FilmService.class, UserService.class,
+        FilmDbStorage.class, UserDbStorage.class, MpaDbStorage.class, GenreDbStorage.class})
 class UserControllerTest {
 
     @Autowired
@@ -40,132 +41,171 @@ class UserControllerTest {
     @DisplayName("Создание пользователя с валидными данными")
     public void createUserValidData() {
         // Given
-        User user = createValidUser("user@email.com", "login", "User Name", LocalDate.of(1990, 1, 1));
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("User Name")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
         // When
-        ResponseEntity<Object> response = userController.createUser(user);
+        UserDto response = userController.createUser(userDto);
 
         // Then
-        assertEquals(201, response.getStatusCode().value());
-        assertNotNull(response.getBody());
-        assertInstanceOf(User.class, response.getBody());
-        User createdUser = (User) response.getBody();
-        assertEquals("User Name", createdUser.getName());
+        assertNotNull(response);
+        assertEquals("User Name", response.getName());
+        assertEquals("user@email.com", response.getEmail());
+        assertTrue(response.getId() > 0);
     }
 
     @Test
     @DisplayName("Создание пользователя с пустым именем")
     public void createUserWithEmptyName() {
         // Given
-        User user = createValidUser("user@email.com", "login", "", LocalDate.of(1990, 1, 1));
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("")  // пустое имя
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
         // When
-        ResponseEntity<Object> response = userController.createUser(user);
+        UserDto response = userController.createUser(userDto);
 
         // Then
-        assertEquals(201, response.getStatusCode().value());
-        User createdUser = (User) response.getBody();
-        assertNotNull(createdUser);
-        assertEquals("login", createdUser.getName());
+        assertNotNull(response);
+        assertEquals("login", response.getName());
     }
 
     @Test
     @DisplayName("Создание пользователя с null именем")
     public void createUserWithNullName() {
         // Given
-        User user = createValidUser("user@email.com", "login", null, LocalDate.of(1990, 1, 1));
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name(null)  // null имя
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
         // When
-        ResponseEntity<Object> response = userController.createUser(user);
+        UserDto response = userController.createUser(userDto);
 
         // Then
-        assertEquals(201, response.getStatusCode().value());
-        User createdUser = (User) response.getBody();
-        assertNotNull(createdUser);
-        assertEquals("login", createdUser.getName());
+        assertNotNull(response);
+        assertEquals("login", response.getName());
     }
 
     @Test
     @DisplayName("Создание пользователя с именем из пробелов")
     public void createUserWithWhitespaceName() {
         // Given
-        User user = createValidUser("user@email.com", "login", "   ", LocalDate.of(1990, 1, 1));
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("   ")  // пробелы
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
         // When
-        ResponseEntity<Object> response = userController.createUser(user);
+        UserDto response = userController.createUser(userDto);
 
         // Then
-        assertEquals(201, response.getStatusCode().value());
-        User createdUser = (User) response.getBody();
-        assertNotNull(createdUser);
-        assertEquals("login", createdUser.getName());
+        assertNotNull(response);
+        assertEquals("login", response.getName());
     }
 
     @Test
     @DisplayName("Обновление существующего пользователя")
     public void updateUserExistingUser() {
-        // Given
-        User user = createValidUser("user@email.com", "login", "Name", LocalDate.of(1990, 1, 1));
-        ResponseEntity<Object> createResponse = userController.createUser(user);
-        User createdUser = (User) createResponse.getBody();
+        // 1. Создаем пользователя
+        UserCreateDto createDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        User updatedUser = createValidUser("updated@email.com", "newlogin", "New Name", LocalDate.of(1995, 1, 1));
+        UserDto createdUser = userController.createUser(createDto);
         assertNotNull(createdUser);
-        updatedUser.setId(createdUser.getId());
+
+        // 2. Обновляем
+        UserUpdateDto updateDto = UserUpdateDto.builder()
+                .id(createdUser.getId())
+                .email("updated@email.com")
+                .login("newlogin")
+                .name("New Name")
+                .birthday(LocalDate.of(1995, 1, 1))
+                .build();
 
         // When
-        ResponseEntity<Object> response = userController.updateUser(updatedUser);
+        UserDto updatedUser = userController.updateUser(updateDto);
 
         // Then
-        assertEquals(200, response.getStatusCode().value());
-        assertInstanceOf(User.class, response.getBody());
-        User resultUser = (User) response.getBody();
-        assertEquals("New Name", resultUser.getName());
-        assertEquals("updated@email.com", resultUser.getEmail());
+        assertNotNull(updatedUser);
+        assertEquals("New Name", updatedUser.getName());
+        assertEquals("updated@email.com", updatedUser.getEmail());
+        assertEquals("newlogin", updatedUser.getLogin());
     }
 
     @Test
     @DisplayName("Обновление несуществующего пользователя")
     public void updateUserNonExistingUser() {
         // Given
-        User user = createValidUser("user@email.com", "login", "Name", LocalDate.of(1990, 1, 1));
-        user.setId(999);
+        UserUpdateDto updateDto = UserUpdateDto.builder()
+                .id(999)  // несуществующий ID
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .build();
 
-        // When
-        ResponseEntity<Object> response = userController.updateUser(user);
-
-        // Then
-        assertEquals(404, response.getStatusCode().value());
-        assertInstanceOf(Map.class, response.getBody());
+        // When & Then - должно выбросить исключение
+        assertThrows(Exception.class, () -> userController.updateUser(updateDto));
     }
 
     @Test
     @DisplayName("Обновление пользователя с пустым именем")
     public void updateUserWithEmptyName() {
-        // Given
-        User user = createValidUser("user@email.com", "login", "Name", LocalDate.of(1990, 1, 1));
-        ResponseEntity<Object> createResponse = userController.createUser(user);
-        User createdUser = (User) createResponse.getBody();
+        // 1. Создаем пользователя
+        UserCreateDto createDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        User updatedUser = createValidUser("updated@email.com", "newlogin", "", LocalDate.of(1995, 1, 1));
+        UserDto createdUser = userController.createUser(createDto);
         assertNotNull(createdUser);
-        updatedUser.setId(createdUser.getId());
+
+        // 2. Обновляем с пустым именем
+        UserUpdateDto updateDto = UserUpdateDto.builder()
+                .id(createdUser.getId())
+                .email("updated@email.com")
+                .login("newlogin")
+                .name("")  // пустое имя
+                .birthday(LocalDate.of(1995, 1, 1))
+                .build();
 
         // When
-        ResponseEntity<Object> response = userController.updateUser(updatedUser);
+        UserDto updatedUser = userController.updateUser(updateDto);
 
         // Then
-        assertEquals(200, response.getStatusCode().value());
-        User resultUser = (User) response.getBody();
-        assertNotNull(resultUser);
-        assertEquals("newlogin", resultUser.getName());
+        assertNotNull(updatedUser);
+        assertEquals("newlogin", updatedUser.getName());
     }
 
     @Test
     @DisplayName("Получение всех пользователей из пустого списка")
     public void getAllUsersEmptyList() {
         // When
-        List<User> users = userController.getAllUsers();
+        List<UserDto> users = userController.getAllUsers();
 
         // Then
         assertNotNull(users);
@@ -176,14 +216,27 @@ class UserControllerTest {
     @DisplayName("Получение всех пользователей с данными")
     public void getAllUsersWithData() {
         // Given
-        User user1 = createValidUser("user1@email.com", "login1", "User One", LocalDate.of(1990, 1, 1));
-        User user2 = createValidUser("user2@email.com", "login2", "User Two", LocalDate.of(1995, 1, 1));
+        UserCreateDto user1 = UserCreateDto.builder()
+                .email("user1@email.com")
+                .login("login1")
+                .name("User One")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
+
+        UserCreateDto user2 = UserCreateDto.builder()
+                .email("user2@email.com")
+                .login("login2")
+                .name("User Two")
+                .birthday(LocalDate.of(1995, 1, 1))
+                .password("password123")
+                .build();
 
         userController.createUser(user1);
         userController.createUser(user2);
 
         // When
-        List<User> users = userController.getAllUsers();
+        List<UserDto> users = userController.getAllUsers();
 
         // Then
         assertEquals(2, users.size());
@@ -195,18 +248,34 @@ class UserControllerTest {
     @DisplayName("Создание нескольких пользователей и проверка уникальности ID")
     public void createMultipleUsersCheckIds() {
         // Given
-        User user1 = createValidUser("user1@email.com", "login1", "User 1", LocalDate.of(1990, 1, 1));
-        User user2 = createValidUser("user2@email.com", "login2", "User 2", LocalDate.of(1995, 1, 1));
-        User user3 = createValidUser("user3@email.com", "login3", "User 3", LocalDate.of(2000, 1, 1));
+        UserCreateDto user1 = UserCreateDto.builder()
+                .email("user1@email.com")
+                .login("login1")
+                .name("User 1")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
+
+        UserCreateDto user2 = UserCreateDto.builder()
+                .email("user2@email.com")
+                .login("login2")
+                .name("User 2")
+                .birthday(LocalDate.of(1995, 1, 1))
+                .password("password123")
+                .build();
+
+        UserCreateDto user3 = UserCreateDto.builder()
+                .email("user3@email.com")
+                .login("login3")
+                .name("User 3")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .password("password123")
+                .build();
 
         // When
-        ResponseEntity<Object> response1 = userController.createUser(user1);
-        ResponseEntity<Object> response2 = userController.createUser(user2);
-        ResponseEntity<Object> response3 = userController.createUser(user3);
-
-        User result1 = (User) response1.getBody();
-        User result2 = (User) response2.getBody();
-        User result3 = (User) response3.getBody();
+        UserDto result1 = userController.createUser(user1);
+        UserDto result2 = userController.createUser(user2);
+        UserDto result3 = userController.createUser(user3);
 
         // Then
         assertNotNull(result1);
@@ -215,73 +284,85 @@ class UserControllerTest {
 
         assertNotEquals(result1.getId(), result2.getId());
         assertNotEquals(result2.getId(), result3.getId());
+        assertNotEquals(result1.getId(), result3.getId());
     }
 
     @Test
     @DisplayName("Создание пользователя с датой рождения в будущем")
     public void createUserWithFutureBirthday() {
-        // Given
-        User user = createValidUser("user@email.com", "login", "Name", LocalDate.now().plusDays(1));
+        // Given - валидация должна отклонить
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.now().plusDays(1))
+                .password("password123")
+                .build();
 
-        // When
-        ResponseEntity<Object> response = userController.createUser(user);
-
-        // Then
-        assertEquals(201, response.getStatusCode().value());
+        // When & Then - должно выбросить исключение валидации
+        assertThrows(Exception.class, () -> userController.createUser(userDto));
     }
 
     @Test
     @DisplayName("Создание пользователя с текущей датой рождения")
     public void createUserWithCurrentDateBirthday() {
         // Given
-        User user = createValidUser("user@email.com", "login", "Name", LocalDate.now());
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.now())
+                .password("password123")
+                .build();
 
         // When
-        ResponseEntity<Object> response = userController.createUser(user);
+        UserDto response = userController.createUser(userDto);
 
         // Then
-        assertEquals(201, response.getStatusCode().value());
+        assertNotNull(response);
+        assertEquals("Name", response.getName());
     }
 
     @Test
     @DisplayName("Создание пользователя с очень старой датой рождения")
     public void createUserWithVeryOldBirthday() {
         // Given
-        User user = createValidUser("user@email.com", "login", "Name", LocalDate.of(1900, 1, 1));
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.of(1900, 1, 1))
+                .password("password123")
+                .build();
 
         // When
-        ResponseEntity<Object> response = userController.createUser(user);
+        UserDto response = userController.createUser(userDto);
 
         // Then
-        assertEquals(201, response.getStatusCode().value());
+        assertNotNull(response);
+        assertEquals("Name", response.getName());
     }
 
     @Test
-    @DisplayName("Обновление пользователя сохраняет логин при пустом имени")
-    public void updateUserMaintainsNameWhenEmpty() {
+    @DisplayName("Получение пользователя по ID")
+    public void getUserById() {
         // Given
-        User user = createValidUser("user@email.com", "login", "Original Name", LocalDate.of(1990, 1, 1));
-        ResponseEntity<Object> createResponse = userController.createUser(user);
-        User createdUser = (User) createResponse.getBody();
+        UserCreateDto createDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Test User")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        User updatedUser = createValidUser("updated@email.com", "newlogin", "", LocalDate.of(1995, 1, 1));
-        assertNotNull(createdUser);
-        updatedUser.setId(createdUser.getId());
+        UserDto createdUser = userController.createUser(createDto);
 
         // When
-        userController.updateUser(updatedUser);
-        List<User> users = userController.getAllUsers();
+        UserDto foundUser = userController.getUser(createdUser.getId());
 
         // Then
-        assertEquals("newlogin", users.getFirst().getName());
-    }
-
-    private User createValidUser(String email, String login, String name, LocalDate birthday) {
-        User user = new User();
-        user.setEmail(email);
-        user.setLogin(login);
-        user.setName(name);
-        user.setBirthday(birthday);
-        return user;
+        assertNotNull(foundUser);
+        assertEquals(createdUser.getId(), foundUser.getId());
+        assertEquals("Test User", foundUser.getName());
     }
 }

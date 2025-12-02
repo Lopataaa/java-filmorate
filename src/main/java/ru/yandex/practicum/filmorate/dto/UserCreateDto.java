@@ -1,0 +1,33 @@
+package ru.yandex.practicum.filmorate.dto;
+
+import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import jakarta.validation.constraints.*;
+import java.time.LocalDate;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserCreateDto {
+    @NotBlank(message = "Email не может быть пустым")
+    @Email(message = "Некорректный формат email")
+    private String email;
+
+    @NotBlank(message = "Логин не может быть пустым")
+    @Pattern(regexp = "^\\S+$", message = "Логин не может содержать пробелы")
+    private String login;
+
+    private String name;
+
+    @Past(message = "Дата рождения не может быть в будущем")
+    private LocalDate birthday;
+
+    @NotBlank(message = "Пароль не может быть пустым")
+    @Size(min = 6, message = "Пароль должен содержать минимум 6 символов")
+    private String password;
+}
