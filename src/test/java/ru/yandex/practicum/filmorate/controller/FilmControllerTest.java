@@ -8,12 +8,14 @@ import org.springframework.context.annotation.Import;
 import ru.yandex.practicum.filmorate.dto.FilmCreateDto;
 import ru.yandex.practicum.filmorate.dto.FilmDto;
 import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
 import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
+import ru.yandex.practicum.filmorate.mapper.FilmMapper;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -22,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @JdbcTest
 @Import({FilmController.class, FilmService.class, UserService.class, FilmDbStorage.class,
-        UserDbStorage.class, MpaDbStorage.class, GenreDbStorage.class})
+        UserDbStorage.class, MpaDbStorage.class, GenreDbStorage.class, FilmMapper.class})
 class FilmControllerTest {
 
     @Autowired
@@ -63,7 +65,7 @@ class FilmControllerTest {
                 .build();
 
         // When & Then - должен выбросить исключение валидации
-        assertThrows(Exception.class, () -> filmController.createFilm(filmDto));
+        assertThrows(ValidationException.class, () -> filmController.createFilm(filmDto));
     }
 
     @Test
@@ -104,7 +106,7 @@ class FilmControllerTest {
     public void updateFilmNonExistingFilm() {
         // Given
         FilmUpdateDto updateDto = FilmUpdateDto.builder()
-                .id(999)  // Несуществующий ID
+                .id(999)  // int
                 .name("Non Existing")
                 .description("Description")
                 .releaseDate(LocalDate.of(2000, 1, 1))
