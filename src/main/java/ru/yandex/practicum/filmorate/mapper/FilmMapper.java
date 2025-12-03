@@ -7,6 +7,7 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -55,6 +56,9 @@ public class FilmMapper {
         film.setReleaseDate(dto.getReleaseDate());
         film.setDuration(dto.getDuration());
 
+        // Валидация даты релиза (не раньше 28 декабря 1895)
+        validateReleaseDate(film.getReleaseDate());
+
         if (dto.getMpaId() != 0) {
             Mpa mpa = new Mpa();
             mpa.setId(dto.getMpaId());
@@ -73,5 +77,12 @@ public class FilmMapper {
         }
 
         return film;
+    }
+
+    private void validateReleaseDate(LocalDate releaseDate) {
+        LocalDate minReleaseDate = LocalDate.of(1895, 12, 28);
+        if (releaseDate != null && releaseDate.isBefore(minReleaseDate)) {
+            throw new IllegalArgumentException("Дата релиза не может быть раньше 28 декабря 1895 года");
+        }
     }
 }

@@ -6,6 +6,7 @@ import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
 import ru.yandex.practicum.filmorate.model.User;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
@@ -44,8 +45,18 @@ public class UserMapper {
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setLogin(dto.getLogin());
-        user.setName(dto.getName());
+
+        // Исправление: если имя пустое, null или состоит из пробелов, используем логин
+        if (dto.getName() == null || dto.getName().trim().isEmpty()) {
+            user.setName(dto.getLogin());
+        } else {
+            user.setName(dto.getName());
+        }
+
         user.setBirthday(dto.getBirthday());
+
+        // Валидация даты рождения
+        validateBirthday(user.getBirthday());
 
         return user;
     }
@@ -57,8 +68,18 @@ public class UserMapper {
 
         existingUser.setEmail(dto.getEmail());
         existingUser.setLogin(dto.getLogin());
-        existingUser.setName(dto.getName());
+
+        // Исправление: если имя пустое, null или состоит из пробелов, используем логин
+        if (dto.getName() == null || dto.getName().trim().isEmpty()) {
+            existingUser.setName(dto.getLogin());
+        } else {
+            existingUser.setName(dto.getName());
+        }
+
         existingUser.setBirthday(dto.getBirthday());
+
+        // Валидация даты рождения
+        validateBirthday(existingUser.getBirthday());
 
         return existingUser;
     }
@@ -72,9 +93,25 @@ public class UserMapper {
         user.setId(dto.getId());
         user.setEmail(dto.getEmail());
         user.setLogin(dto.getLogin());
-        user.setName(dto.getName());
+
+        // Исправление: если имя пустое, null или состоит из пробелов, используем логин
+        if (dto.getName() == null || dto.getName().trim().isEmpty()) {
+            user.setName(dto.getLogin());
+        } else {
+            user.setName(dto.getName());
+        }
+
         user.setBirthday(dto.getBirthday());
 
+        // Валидация даты рождения
+        validateBirthday(user.getBirthday());
+
         return user;
+    }
+
+    private void validateBirthday(LocalDate birthday) {
+        if (birthday != null && birthday.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("Дата рождения не может быть в будущем");
+        }
     }
 }

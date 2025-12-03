@@ -9,6 +9,7 @@ import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,6 +41,10 @@ public class UserService {
 
     public User createUser(User user) {
         log.debug("Создание нового пользователя: {}", user.getLogin());
+
+        // Дополнительная валидация даты рождения
+        validateUserBirthday(user.getBirthday());
+
         User createdUser = userStorage.create(user);
         log.info("Создан новый пользователь: {} (id: {})", createdUser.getLogin(), createdUser.getId());
         return createdUser;
@@ -47,12 +52,23 @@ public class UserService {
 
     public User updateUser(User user) {
         log.debug("Обновление пользователя с id {}", user.getId());
+
+        // Дополнительная валидация даты рождения
+        validateUserBirthday(user.getBirthday());
+
         getUserById(user.getId());
         User updatedUser = userStorage.update(user);
         log.info("Пользователь с id {} обновлен", user.getId());
         return updatedUser;
     }
 
+    private void validateUserBirthday(LocalDate birthday) {
+        if (birthday != null && birthday.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("Дата рождения не может быть в будущем");
+        }
+    }
+
+    // остальные методы без изменений...
     public void addFriend(int userId, int friendId) {
         log.debug("Добавление в друзья: пользователь {} отправляет запрос пользователю {}", userId, friendId);
         getUserById(userId);
