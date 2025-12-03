@@ -109,6 +109,9 @@ public class UserService {
 
     public List<User> getFriends(int userId) {
         log.debug("Получение списка друзей для пользователя {}", userId);
+
+        getUserById(userId);
+
         UserDbStorage userDbStorage = (UserDbStorage) userStorage;
         return userDbStorage.getFriends(userId);
     }

@@ -69,9 +69,9 @@ public class UserController {
 
     @GetMapping("/{id}/friends")
     public List<UserDto> getFriends(@PathVariable int id) {
+        userService.getUserById(id);
         List<User> friends = userService.getFriends(id);
-        Collection<UserDto> dtoCollection = userMapper.toDtoCollection(friends);
-        return new ArrayList<>(dtoCollection);
+        return new ArrayList<>(userMapper.toDtoCollection(friends));
     }
 
     @GetMapping("/{id}/friends/common/{otherId}")
