@@ -56,7 +56,6 @@ public class FilmMapper {
         film.setReleaseDate(dto.getReleaseDate());
         film.setDuration(dto.getDuration());
 
-        // Валидация даты релиза (не раньше 28 декабря 1895)
         validateReleaseDate(film.getReleaseDate());
 
         if (dto.getMpaId() != 0) {

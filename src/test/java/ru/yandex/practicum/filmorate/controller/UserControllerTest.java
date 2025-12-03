@@ -4,19 +4,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Import;
 import ru.yandex.practicum.filmorate.dto.UserCreateDto;
 import ru.yandex.practicum.filmorate.dto.UserDto;
 import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
-import ru.yandex.practicum.filmorate.service.FilmService;
-import ru.yandex.practicum.filmorate.service.UserService;
-import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
-import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
-import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 
 import java.time.LocalDate;
@@ -124,7 +116,6 @@ class UserControllerTest {
     @Test
     @DisplayName("Обновление существующего пользователя")
     public void updateUserExistingUser() {
-        // 1. Создаем пользователя
         UserCreateDto createDto = UserCreateDto.builder()
                 .email("user@email.com")
                 .login("login")
@@ -136,7 +127,6 @@ class UserControllerTest {
         UserDto createdUser = userController.createUser(createDto);
         assertNotNull(createdUser);
 
-        // 2. Обновляем
         UserUpdateDto updateDto = UserUpdateDto.builder()
                 .id(createdUser.getId())
                 .email("updated@email.com")
@@ -167,14 +157,13 @@ class UserControllerTest {
                 .birthday(LocalDate.of(1990, 1, 1))
                 .build();
 
-        // When & Then - должно выбросить исключение
+        // When & Then
         assertThrows(Exception.class, () -> userController.updateUser(updateDto));
     }
 
     @Test
     @DisplayName("Обновление пользователя с пустым именем")
     public void updateUserWithEmptyName() {
-        // 1. Создаем пользователя
         UserCreateDto createDto = UserCreateDto.builder()
                 .email("user@email.com")
                 .login("login")
@@ -186,7 +175,6 @@ class UserControllerTest {
         UserDto createdUser = userController.createUser(createDto);
         assertNotNull(createdUser);
 
-        // 2. Обновляем с пустым именем
         UserUpdateDto updateDto = UserUpdateDto.builder()
                 .id(createdUser.getId())
                 .email("updated@email.com")
@@ -292,7 +280,7 @@ class UserControllerTest {
     @Test
     @DisplayName("Создание пользователя с датой рождения в будущем")
     public void createUserWithFutureBirthday() {
-        // Given - валидация должна отклонить
+        // Given
         UserCreateDto userDto = UserCreateDto.builder()
                 .email("user@email.com")
                 .login("login")
@@ -301,7 +289,7 @@ class UserControllerTest {
                 .password("password123")
                 .build();
 
-        // When & Then - должно выбросить исключение валидации
+        // When & Then
         assertThrows(Exception.class, () -> userController.createUser(userDto));
     }
 

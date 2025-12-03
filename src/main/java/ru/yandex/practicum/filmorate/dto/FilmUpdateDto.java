@@ -61,12 +61,11 @@ public class FilmUpdateDto {
             film.setMpa(mpa);
         }
 
-        // Жанры
         if (dto.getGenreIds() != null) {
             Set<Genre> genres = dto.getGenreIds().stream()
                     .map(genreId -> {
                         Genre genre = new Genre();
-                        genre.setId(genreId);  // ← уже int, не нужен .intValue()
+                        genre.setId(genreId);
                         return genre;
                     })
                     .collect(Collectors.toSet());

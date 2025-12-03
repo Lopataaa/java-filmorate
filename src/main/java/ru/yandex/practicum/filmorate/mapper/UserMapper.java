@@ -46,7 +46,6 @@ public class UserMapper {
         user.setEmail(dto.getEmail());
         user.setLogin(dto.getLogin());
 
-        // Исправление: если имя пустое, null или состоит из пробелов, используем логин
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             user.setName(dto.getLogin());
         } else {
@@ -55,7 +54,6 @@ public class UserMapper {
 
         user.setBirthday(dto.getBirthday());
 
-        // Валидация даты рождения
         validateBirthday(user.getBirthday());
 
         return user;
@@ -69,7 +67,6 @@ public class UserMapper {
         existingUser.setEmail(dto.getEmail());
         existingUser.setLogin(dto.getLogin());
 
-        // Исправление: если имя пустое, null или состоит из пробелов, используем логин
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             existingUser.setName(dto.getLogin());
         } else {
@@ -78,7 +75,6 @@ public class UserMapper {
 
         existingUser.setBirthday(dto.getBirthday());
 
-        // Валидация даты рождения
         validateBirthday(existingUser.getBirthday());
 
         return existingUser;
@@ -94,7 +90,6 @@ public class UserMapper {
         user.setEmail(dto.getEmail());
         user.setLogin(dto.getLogin());
 
-        // Исправление: если имя пустое, null или состоит из пробелов, используем логин
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             user.setName(dto.getLogin());
         } else {
@@ -103,7 +98,6 @@ public class UserMapper {
 
         user.setBirthday(dto.getBirthday());
 
-        // Валидация даты рождения
         validateBirthday(user.getBirthday());
 
         return user;

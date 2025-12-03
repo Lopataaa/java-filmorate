@@ -42,7 +42,8 @@ public class UserService {
     public User createUser(User user) {
         log.debug("Создание нового пользователя: {}", user.getLogin());
 
-        // Дополнительная валидация даты рождения
+        processUserName(user);
+
         validateUserBirthday(user.getBirthday());
 
         User createdUser = userStorage.create(user);
@@ -53,7 +54,8 @@ public class UserService {
     public User updateUser(User user) {
         log.debug("Обновление пользователя с id {}", user.getId());
 
-        // Дополнительная валидация даты рождения
+        processUserName(user);
+
         validateUserBirthday(user.getBirthday());
 
         getUserById(user.getId());
@@ -62,13 +64,19 @@ public class UserService {
         return updatedUser;
     }
 
+    private void processUserName(User user) {
+        if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(user.getLogin());
+            log.debug("Имя пользователя не указано, установлено значение логина: {}", user.getLogin());
+        }
+    }
+
     private void validateUserBirthday(LocalDate birthday) {
         if (birthday != null && birthday.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException("Дата рождения не может быть в будущем");
         }
     }
 
-    // остальные методы без изменений...
     public void addFriend(int userId, int friendId) {
         log.debug("Добавление в друзья: пользователь {} отправляет запрос пользователю {}", userId, friendId);
         getUserById(userId);
