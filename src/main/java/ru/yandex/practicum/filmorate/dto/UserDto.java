@@ -29,8 +29,6 @@ public class UserDto {
 
     private String name;
 
-    @NotBlank(message = "Пароль не может быть пустым")
-    @Size(min = 6, message = "Пароль должен содержать минимум 6 символов")
     private String password;
 
     @PastOrPresent(message = "Дата рождения не может быть в будущем")
