@@ -26,6 +26,5 @@ public class UserCreateDto {
     @Past(message = "Дата рождения не может быть в будущем")
     private LocalDate birthday;
 
-    @NotBlank(message = "Пароль не может быть пустым")
     private String password;
 }

@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) NOT NULL UNIQUE,
     login VARCHAR(255) NOT NULL UNIQUE,
     name VARCHAR(255),
+    password VARCHAR(255),
     birthday DATE
     );
 

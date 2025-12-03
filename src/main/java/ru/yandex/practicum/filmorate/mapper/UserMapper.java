@@ -54,6 +54,8 @@ public class UserMapper {
 
         user.setBirthday(dto.getBirthday());
 
+        user.setPassword(dto.getPassword());
+
         validateBirthday(user.getBirthday());
 
         return user;

@@ -48,6 +48,7 @@ public class UserDbStorage implements UserStorage {
             stmt.setString(1, user.getEmail());
             stmt.setString(2, user.getLogin());
             stmt.setString(3, user.getName());
+            stmt.setString(4, user.getPassword());
             stmt.setDate(4, user.getBirthday() != null ? Date.valueOf(user.getBirthday()) : null);
             return stmt;
         }, keyHolder);
