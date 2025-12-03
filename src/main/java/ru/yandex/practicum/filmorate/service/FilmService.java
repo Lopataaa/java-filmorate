@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
@@ -13,7 +14,9 @@ import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class FilmService {
@@ -25,7 +28,8 @@ public class FilmService {
     private final JdbcTemplate jdbcTemplate;
 
     @Autowired
-    public FilmService(FilmStorage filmStorage, UserService userService, MpaDbStorage mpaStorage, GenreDbStorage genreStorage, JdbcTemplate jdbcTemplate) {
+    public FilmService(FilmStorage filmStorage, UserService userService, MpaDbStorage mpaStorage,
+                       GenreDbStorage genreStorage, JdbcTemplate jdbcTemplate) {
         this.filmStorage = filmStorage;
         this.userService = userService;
         this.mpaStorage = mpaStorage;
@@ -51,20 +55,49 @@ public class FilmService {
 
     public Film createFilm(Film film) {
         log.debug("Создание нового фильма: {}", film.getName());
-        if (film.getMpa() != null && film.getMpa().getId() > 0) {
-            Mpa mpa = mpaStorage.getMpaRatingById(film.getMpa().getId()).orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
-            film.setMpa(mpa);
+
+        // ВАЛИДАЦИЯ: дата релиза не может быть раньше 28 декабря 1895 года
+        if (film.getReleaseDate() != null &&
+                film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
+            throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
 
-        if (film.getGenres() != null) {
+        // Проверяем MPA
+        if (film.getMpa() != null && film.getMpa().getId() > 0) {
+            Mpa mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
+            film.setMpa(mpa);
+        } else {
+            film.setMpa(null);
+        }
+
+        // Проверяем Genres и убираем дубликаты
+        Set<Genre> uniqueGenres = new HashSet<>();
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
             for (Genre genre : film.getGenres()) {
                 if (genre.getId() > 0) {
-                    genreStorage.getGenreById(genre.getId()).orElseThrow(() -> new IllegalArgumentException("Жанр с id " + genre.getId() + " не найден"));
+                    Genre fullGenre = genreStorage.getGenreById(genre.getId())
+                            .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + genre.getId() + " не найден"));
+                    uniqueGenres.add(fullGenre);
                 }
             }
+            // Сортируем по id для устранения дубликатов и порядка
+            List<Genre> sortedGenres = uniqueGenres.stream()
+                    .sorted(Comparator.comparingInt(Genre::getId))
+                    .collect(Collectors.toList());
+            film.setGenres(new HashSet<>(sortedGenres));
         }
 
         Film createdFilm = filmStorage.create(film);
+
+        if (!uniqueGenres.isEmpty() && filmStorage instanceof FilmDbStorage) {
+            FilmDbStorage filmDbStorage = (FilmDbStorage) filmStorage;
+            for (Genre genre : uniqueGenres) {
+                filmDbStorage.addGenre(createdFilm.getId(), genre.getId());
+            }
+            filmDbStorage.loadGenresForFilms(List.of(createdFilm));
+        }
+
         log.info("Создан новый фильм: '{}' (id: {})", createdFilm.getName(), createdFilm.getId());
         return createdFilm;
     }
@@ -72,15 +105,51 @@ public class FilmService {
     public Film updateFilm(Film film) {
         log.debug("Обновление фильма с id {}", film.getId());
 
-        Film existingFilm = filmStorage.getById(film.getId()).orElseThrow(() -> new IllegalArgumentException("Фильм с id " + film.getId() + " не найден"));
+        Film existingFilm = filmStorage.getById(film.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Фильм с id " + film.getId() + " не найден"));
+
+        if (film.getReleaseDate() != null &&
+                film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
+            throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
+        }
 
         if (film.getMpa() != null && film.getMpa().getId() > 0) {
-            Mpa mpa = mpaStorage.getMpaRatingById(film.getMpa().getId()).orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
+            Mpa mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
             film.setMpa(mpa);
+        } else {
+            film.setMpa(null);
+        }
+
+        Set<Genre> uniqueGenres = new HashSet<>();
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+            for (Genre genre : film.getGenres()) {
+                if (genre.getId() > 0) {
+                    Genre fullGenre = genreStorage.getGenreById(genre.getId())
+                            .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + genre.getId() + " не найден"));
+                    uniqueGenres.add(fullGenre);
+                }
+            }
+            List<Genre> sortedGenres = uniqueGenres.stream()
+                    .sorted(Comparator.comparingInt(Genre::getId))
+                    .collect(Collectors.toList());
+            film.setGenres(new HashSet<>(sortedGenres));
+        } else {
+            film.setGenres(new HashSet<>());
         }
 
         Film updatedFilm = filmStorage.update(film);
-        log.info("Фильм '{}' (id: {}) обновлен", updatedFilm.getName(), updatedFilm.getId());
+
+        if (filmStorage instanceof FilmDbStorage) {
+            FilmDbStorage filmDbStorage = (FilmDbStorage) filmStorage;
+            filmDbStorage.removeAllGenres(updatedFilm.getId());
+            for (Genre genre : uniqueGenres) {
+                filmDbStorage.addGenre(updatedFilm.getId(), genre.getId());
+            }
+            filmDbStorage.loadGenresForFilms(List.of(updatedFilm));
+        }
+
+        log.info("Обновлен фильм: '{}' (id: {})", updatedFilm.getName(), updatedFilm.getId());
         return updatedFilm;
     }
 
@@ -115,8 +184,16 @@ public class FilmService {
     public List<Film> getPopularFilms(int count) {
         log.debug("Получение {} популярных фильмов", count);
 
-        if (filmStorage instanceof FilmDbStorage filmDbStorage) {
-            String sql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " + "COUNT(l.user_id) AS likes_count " + "FROM films f " + "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " + "LEFT JOIN likes l ON f.id = l.film_id " + "GROUP BY f.id, m.id, m.name, m.description " + "ORDER BY likes_count DESC " + "LIMIT ?";
+        if (filmStorage instanceof FilmDbStorage) {
+            FilmDbStorage filmDbStorage = (FilmDbStorage) filmStorage;
+            String sql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " +
+                    "COUNT(l.user_id) AS likes_count " +
+                    "FROM films f " +
+                    "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
+                    "LEFT JOIN likes l ON f.id = l.film_id " +
+                    "GROUP BY f.id, m.id, m.name, m.description " +
+                    "ORDER BY likes_count DESC " +
+                    "LIMIT ?";
 
             List<Film> films = filmDbStorage.getJdbcTemplate().query(sql, (rs, rowNum) -> {
                 Film film = filmDbStorage.mapFilm(rs, rowNum);
@@ -147,7 +224,8 @@ public class FilmService {
 
     public Mpa getMpaRatingById(int id) {
         log.debug("Получение рейтинга MPA с id {}", id);
-        return mpaStorage.getMpaRatingById(id).orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + id + " не найден"));
+        return mpaStorage.getMpaRatingById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + id + " не найден"));
     }
 
     public List<Genre> getAllGenres() {
@@ -157,6 +235,7 @@ public class FilmService {
 
     public Genre getGenreById(int id) {
         log.debug("Получение жанра с id {}", id);
-        return genreStorage.getGenreById(id).orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
+        return genreStorage.getGenreById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
     }
 }
