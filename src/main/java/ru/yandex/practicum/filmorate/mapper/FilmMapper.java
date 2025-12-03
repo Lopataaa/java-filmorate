@@ -1,11 +1,11 @@
 package ru.yandex.practicum.filmorate.mapper;
 
+import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.dto.FilmDto;
 import ru.yandex.practicum.filmorate.dto.FilmCreateDto;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
-import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.Set;

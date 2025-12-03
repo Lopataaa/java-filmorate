@@ -24,7 +24,8 @@ public class FilmCreateDto {
     @Size(max = 200, message = "Описание не должно превышать 200 символов")
     private String description;
 
-    @NotNull(message = "Дата релиза не может быть null")
+    @NotNull
+    @PastOrPresent(message = "Дата релиза не может быть в будущем")
     private LocalDate releaseDate;
 
     @Positive(message = "Продолжительность фильма должна быть положительной")
