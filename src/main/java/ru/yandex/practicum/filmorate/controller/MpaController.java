@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Mpa;
+import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 
 import java.util.List;
@@ -11,20 +12,20 @@ import java.util.List;
 @RequestMapping("/mpa")
 public class MpaController {
 
-    private final MpaDbStorage mpaStorage;
+    private final FilmService filmService;
 
     @Autowired
-    public MpaController(MpaDbStorage mpaStorage) {
-        this.mpaStorage = mpaStorage;
+    public MpaController(FilmService filmService) {
+        this.filmService = filmService;
     }
 
     @GetMapping
     public List<Mpa> getAllMpaRatings() {
-        return mpaStorage.getAllMpaRatings();
+        return filmService.getAllMpaRatings();
     }
 
     @GetMapping("/{id}")
     public Mpa getMpaRatingById(@PathVariable int id) {
-        return mpaStorage.getMpaRatingById(id).orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + id + " не найден"));
+        return filmService.getMpaRatingById(id);
     }
 }

@@ -5,12 +5,15 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dto.FilmCreateDto;
 import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
+
+import java.util.Comparator;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -35,7 +38,7 @@ public class FilmService {
 
     public Film getFilmById(int id) {
         return filmStorage.getById(id)
-                .orElseThrow(() -> new ValidationException("Фильм с id " + id + " не найден"));
+                .orElseThrow(() -> new NotFoundException("Фильм с id " + id + " не найден"));
     }
 
     public Film createFilm(FilmCreateDto dto) {
@@ -44,17 +47,20 @@ public class FilmService {
         Mpa mpa = null;
         if (dto.getMpa() != null && dto.getMpa().getId() != null) {
             mpa = mpaStorage.getMpaRatingById(dto.getMpa().getId().intValue())
-                    .orElseThrow(() -> new ValidationException("Недопустимый рейтинг MPA"));
+                    .orElseThrow(() -> new NotFoundException("Недопустимый рейтинг MPA"));
         }
 
         Set<Genre> genres = new LinkedHashSet<>();
         if (dto.getGenres() != null) {
+            List<Genre> genreList = new ArrayList<>();
             for (var genreDto : dto.getGenres()) {
                 if (genreDto.getId() == null) continue;
                 Genre genre = genreStorage.getGenreById(genreDto.getId().intValue())
-                        .orElseThrow(() -> new ValidationException("Недопустимый ID жанра: " + genreDto.getId()));
-                genres.add(genre);
+                        .orElseThrow(() -> new NotFoundException("Недопустимый ID жанра: " + genreDto.getId()));
+                genreList.add(genre);
             }
+            genreList.sort(Comparator.comparingInt(Genre::getId));
+            genres = new LinkedHashSet<>(genreList);
         }
 
         Film film = new Film();
@@ -70,24 +76,27 @@ public class FilmService {
 
     public Film updateFilm(FilmUpdateDto dto) {
         Film existing = filmStorage.getById(dto.getId())
-                .orElseThrow(() -> new ValidationException("Фильм с id " + dto.getId() + " не найден"));
+                .orElseThrow(() -> new NotFoundException("Фильм с id " + dto.getId() + " не найден"));
 
         validateReleaseDate(dto.getReleaseDate());
 
         Mpa mpa = null;
         if (dto.getMpa() != null && dto.getMpa().getId() != null) {
             mpa = mpaStorage.getMpaRatingById(dto.getMpa().getId().intValue())
-                    .orElseThrow(() -> new ValidationException("Недопустимый рейтинг MPA"));
+                    .orElseThrow(() -> new NotFoundException("Недопустимый рейтинг MPA"));
         }
 
         Set<Genre> genres = new LinkedHashSet<>();
         if (dto.getGenres() != null) {
+            List<Genre> genreList = new ArrayList<>();
             for (var genreDto : dto.getGenres()) {
                 if (genreDto.getId() == null) continue;
                 Genre genre = genreStorage.getGenreById(genreDto.getId().intValue())
-                        .orElseThrow(() -> new ValidationException("Недопустимый ID жанра: " + genreDto.getId()));
-                genres.add(genre);
+                        .orElseThrow(() -> new NotFoundException("Недопустимый ID жанра: " + genreDto.getId()));
+                genreList.add(genre);
             }
+            genreList.sort(Comparator.comparingInt(Genre::getId));
+            genres = new LinkedHashSet<>(genreList);
         }
 
         existing.setName(dto.getName());
@@ -128,7 +137,7 @@ public class FilmService {
     public Mpa getMpaRatingById(int id) {
         log.debug("Получение рейтинга MPA с id {}", id);
         return mpaStorage.getMpaRatingById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + id + " не найден"));
+                .orElseThrow(() -> new NotFoundException("Рейтинг MPA с id " + id + " не найден"));
     }
 
     public List<Genre> getAllGenres() {
@@ -139,6 +148,6 @@ public class FilmService {
     public Genre getGenreById(int id) {
         log.debug("Получение жанра с id {}", id);
         return genreStorage.getGenreById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + id + " не найден"));
+                .orElseThrow(() -> new NotFoundException("Жанр с id " + id + " не найден"));
     }
 }
