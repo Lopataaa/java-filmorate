@@ -1,313 +1,256 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
+import org.springframework.context.annotation.Import;
+import ru.yandex.practicum.filmorate.dto.FilmCreateDto;
+import ru.yandex.practicum.filmorate.dto.FilmDto;
+import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
+import ru.yandex.practicum.filmorate.dto.MpaDto;
+import ru.yandex.practicum.filmorate.dto.GenreDto;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
-import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
+import ru.yandex.practicum.filmorate.storage.film.GenreDbStorage;
+import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
+import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
+import ru.yandex.practicum.filmorate.mapper.FilmMapper;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-@WebMvcTest(FilmController.class)
+@JdbcTest
+@Import({FilmController.class, FilmService.class, UserService.class, FilmDbStorage.class, UserDbStorage.class, MpaDbStorage.class, GenreDbStorage.class, FilmMapper.class})
 class FilmControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private FilmController filmController;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Test
+    @DisplayName("Добавление фильма с валидными данными")
+    public void addFilmValidData() {
+        // Given
+        FilmCreateDto filmDto = FilmCreateDto.builder()
+                .name("Test Film")
+                .description("Test Description")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())  // MpaDto вместо mpaId
+                .build();
 
-    @MockBean
-    private FilmService filmService;
+        // When
+        FilmDto response = filmController.createFilm(filmDto);
 
-    @MockBean
-    private UserService userService;
-
-    private static final String FILM_NAME = "Test Film";
-    private static final String FILM_DESCRIPTION = "Test Description";
-    private static final LocalDate FILM_RELEASE_DATE = LocalDate.of(2000, 1, 1);
-    private static final Integer FILM_DURATION = 120;
-
-    private Film createFilm(String name, String description, LocalDate releaseDate, Integer duration) {
-        Film film = new Film();
-        film.setName(name);
-        film.setDescription(description);
-        film.setReleaseDate(releaseDate);
-        film.setDuration(duration);
-        return film;
+        // Then
+        assertNotNull(response);
+        assertEquals("Test Film", response.getName());
+        assertEquals("Test Description", response.getDescription());
+        assertTrue(response.getId() > 0);
     }
 
     @Test
-    @DisplayName("Создание фильма с валидными данными должно быть успешным")
-    void test_Create_ValidFilmData_ShouldCreateFilm() throws Exception {
+    @DisplayName("Добавление фильма с невалидной датой релиза")
+    public void addFilmInvalidReleaseDate() {
         // Given
-        Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, FILM_DURATION);
-        Film createdFilm = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, FILM_DURATION);
-        createdFilm.setId(1);
-
-        when(filmService.create(any(Film.class))).thenReturn(createdFilm);
+        FilmCreateDto filmDto = FilmCreateDto.builder()
+                .name("Old Film")
+                .description("Very old film")
+                .releaseDate(LocalDate.of(1890, 1, 1))
+                .duration(90)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
         // When & Then
-        mockMvc.perform(post("/films")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.name").value(FILM_NAME))
-                .andExpect(jsonPath("$.description").value(FILM_DESCRIPTION))
-                .andExpect(jsonPath("$.releaseDate").value(FILM_RELEASE_DATE.toString()))
-                .andExpect(jsonPath("$.duration").value(FILM_DURATION));
-
-        verify(filmService, times(1)).create(any(Film.class));
+        assertThrows(ValidationException.class, () -> filmController.createFilm(filmDto));
     }
 
     @Test
-    @DisplayName("Создание фильма с пустым названием должно вызывать исключение")
-    void test_Create_EmptyFilmName_ShouldThrowValidationException() throws Exception {
-        // Given
-        Film film = createFilm("", FILM_DESCRIPTION, FILM_RELEASE_DATE, FILM_DURATION);
+    @DisplayName("Обновление существующего фильма")
+    public void updateFilmExistingFilm() {
+        FilmCreateDto createDto = FilmCreateDto.builder()
+                .name("Original")
+                .description("Original desc")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
-        when(filmService.create(any(Film.class)))
-                .thenThrow(new ValidationException("Название фильма не может быть пустым"));
+        FilmDto createdFilm = filmController.createFilm(createDto);
+        assertNotNull(createdFilm);
 
-        // When & Then
-        mockMvc.perform(post("/films")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Название фильма не может быть пустым"));
+        FilmUpdateDto updateDto = FilmUpdateDto.builder()
+                .id(createdFilm.getId())
+                .name("Updated")
+                .description("Updated desc")
+                .releaseDate(LocalDate.of(2001, 1, 1))
+                .duration(150)
+                .mpa(MpaDto.builder().id(2).build())  // новый MPA
+                .build();
 
-        verify(filmService, times(1)).create(any(Film.class));
+        // When
+        FilmDto updatedFilm = filmController.updateFilm(updateDto);
+
+        // Then
+        assertNotNull(updatedFilm);
+        assertEquals("Updated", updatedFilm.getName());
+        assertEquals("Updated desc", updatedFilm.getDescription());
+        assertEquals(150, updatedFilm.getDuration());
     }
 
     @Test
-    @DisplayName("Создание фильма с описанием длиннее 200 символов должно вызывать исключение")
-    void test_Create_FilmDescriptionExceeds200Chars_ShouldThrowValidationException() throws Exception {
+    @DisplayName("Обновление несуществующего фильма")
+    public void updateFilmNonExistingFilm() {
         // Given
-        String longDescription = "A".repeat(201);
-        Film film = createFilm(FILM_NAME, longDescription, FILM_RELEASE_DATE, FILM_DURATION);
-
-        when(filmService.create(any(Film.class)))
-                .thenThrow(new ValidationException("Описание не может превышать 200 символов"));
+        FilmUpdateDto updateDto = FilmUpdateDto.builder()
+                .id(999)  // int
+                .name("Non Existing")
+                .description("Description")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
         // When & Then
-        mockMvc.perform(post("/films")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Описание не может превышать 200 символов"));
-
-        verify(filmService, times(1)).create(any(Film.class));
+        assertThrows(Exception.class, () -> filmController.updateFilm(updateDto));
     }
 
     @Test
-    @DisplayName("Создание фильма с датой релиза до 1895 года должно вызывать исключение")
-    void test_Create_FilmReleaseDateBefore1895_ShouldThrowValidationException() throws Exception {
-        // Given
-        LocalDate earlyDate = LocalDate.of(1890, 1, 1);
-        Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, earlyDate, FILM_DURATION);
+    @DisplayName("Получение всех фильмов из пустого списка")
+    public void getAllFilmsEmptyList() {
+        // When
+        List<FilmDto> films = filmController.getAllFilms();
 
-        when(filmService.create(any(Film.class)))
-                .thenThrow(new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года"));
-
-        // When & Then
-        mockMvc.perform(post("/films")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Дата релиза не может быть раньше 28 декабря 1895 года"));
-
-        verify(filmService, times(1)).create(any(Film.class));
+        // Then
+        assertNotNull(films);
+        assertTrue(films.isEmpty());
     }
 
     @Test
-    @DisplayName("Создание фильма с отрицательной продолжительностью должно вызывать исключение")
-    void test_Create_FilmWithNegativeDuration_ShouldThrowValidationException() throws Exception {
+    @DisplayName("Получение всех фильмов с данными")
+    public void getAllFilmsWithData() {
         // Given
-        Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, -100);
+        FilmCreateDto film1 = FilmCreateDto.builder()
+                .name("Film 1")
+                .description("Desc 1")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
-        when(filmService.create(any(Film.class)))
-                .thenThrow(new ValidationException("Продолжительность фильма должна быть положительным числом"));
+        FilmCreateDto film2 = FilmCreateDto.builder()
+                .name("Film 2")
+                .description("Desc 2")
+                .releaseDate(LocalDate.of(2001, 1, 1))
+                .duration(150)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
-        // When & Then
-        mockMvc.perform(post("/films")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Продолжительность фильма должна быть положительным числом"));
+        filmController.createFilm(film1);
+        filmController.createFilm(film2);
 
-        verify(filmService, times(1)).create(any(Film.class));
+        // When
+        List<FilmDto> films = filmController.getAllFilms();
+
+        // Then
+        assertEquals(2, films.size());
     }
 
     @Test
-    @DisplayName("Обновление несуществующего фильма должно вызывать исключение")
-    void test_Update_NonExistentFilm_ShouldThrowNotFoundException() throws Exception {
+    @DisplayName("Добавление нескольких фильмов и проверка уникальности ID")
+    public void addMultipleFilmsCheckIds() {
         // Given
-        Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, FILM_DURATION);
-        film.setId(9999);
+        FilmCreateDto film1 = FilmCreateDto.builder()
+                .name("Film 1")
+                .description("Desc 1")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
-        when(filmService.update(any(Film.class)))
-                .thenThrow(new RuntimeException("Фильм с id=9999 не найден"));
+        FilmCreateDto film2 = FilmCreateDto.builder()
+                .name("Film 2")
+                .description("Desc 2")
+                .releaseDate(LocalDate.of(2001, 1, 1))
+                .duration(150)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
-        // When & Then
-        mockMvc.perform(put("/films")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error").value("Внутренняя ошибка сервера"));
+        FilmCreateDto film3 = FilmCreateDto.builder()
+                .name("Film 3")
+                .description("Desc 3")
+                .releaseDate(LocalDate.of(2002, 1, 1))
+                .duration(180)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
-        verify(filmService, times(1)).update(any(Film.class));
+        // When
+        FilmDto result1 = filmController.createFilm(film1);
+        FilmDto result2 = filmController.createFilm(film2);
+        FilmDto result3 = filmController.createFilm(film3);
+
+        // Then
+        assertNotNull(result1);
+        assertNotNull(result2);
+        assertNotNull(result3);
+
+        assertNotEquals(result1.getId(), result2.getId());
+        assertNotEquals(result2.getId(), result3.getId());
+        assertNotEquals(result1.getId(), result3.getId());
     }
 
     @Test
-    @DisplayName("Получение всех фильмов должно возвращать пустой список при отсутствии фильмов")
-    void test_FindAll_ShouldReturnEmptyList() throws Exception {
+    @DisplayName("Получение фильма по ID")
+    public void getFilmById() {
         // Given
-        when(filmService.findAll()).thenReturn(Collections.emptyList());
+        FilmCreateDto createDto = FilmCreateDto.builder()
+                .name("Test Film")
+                .description("Test Description")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
-        // When & Then
-        mockMvc.perform(get("/films"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(0));
+        FilmDto createdFilm = filmController.createFilm(createDto);
 
-        verify(filmService, times(1)).findAll();
+        // When
+        FilmDto foundFilm = filmController.getFilm(createdFilm.getId());
+
+        // Then
+        assertNotNull(foundFilm);
+        assertEquals(createdFilm.getId(), foundFilm.getId());
+        assertEquals("Test Film", foundFilm.getName());
     }
 
     @Test
-    @DisplayName("Получение всех фильмов должно возвращать список фильмов")
-    void test_FindAll_ShouldReturnFilmsList() throws Exception {
+    @DisplayName("Добавление фильма с жанрами")
+    public void addFilmWithGenres() {
         // Given
-        Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, FILM_DURATION);
-        film.setId(1);
-        List<Film> films = List.of(film);
+        FilmCreateDto filmDto = FilmCreateDto.builder()
+                .name("Film with genres")
+                .description("Test Description")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .genres(Set.of(
+                        GenreDto.builder().id(1).build(),
+                        GenreDto.builder().id(2).build()
+                ))
+                .build();
 
-        when(filmService.findAll()).thenReturn(films);
+        // When
+        FilmDto response = filmController.createFilm(filmDto);
 
-        // When & Then
-        mockMvc.perform(get("/films"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].name").value(FILM_NAME));
-
-        verify(filmService, times(1)).findAll();
+        // Then
+        assertNotNull(response);
+        assertEquals("Film with genres", response.getName());
+        assertNotNull(response.getGenres());
+        assertEquals(2, response.getGenres().size());
     }
 
-    @Test
-    @DisplayName("Обновление фильма с валидными данными должно быть успешным")
-    void test_Update_ValidFilm_ShouldUpdateFilm() throws Exception {
-        // Given
-        Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, FILM_DURATION);
-        film.setId(1);
-
-        Film updatedFilm = createFilm("Updated Film Name", "Updated Description", FILM_RELEASE_DATE, FILM_DURATION);
-        updatedFilm.setId(1);
-
-        when(filmService.update(any(Film.class))).thenReturn(updatedFilm);
-
-        // When & Then
-        mockMvc.perform(put("/films")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.name").value("Updated Film Name"))
-                .andExpect(jsonPath("$.description").value("Updated Description"));
-
-        verify(filmService, times(1)).update(any(Film.class));
-    }
-
-    @Test
-    @DisplayName("Получение фильма по ID должно возвращать фильм")
-    void test_GetById_ShouldReturnFilm() throws Exception {
-        // Given
-        Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, FILM_DURATION);
-        film.setId(1);
-
-        when(filmService.getById(1)).thenReturn(film);
-
-        // When & Then
-        mockMvc.perform(get("/films/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.name").value(FILM_NAME))
-                .andExpect(jsonPath("$.description").value(FILM_DESCRIPTION));
-
-        verify(filmService, times(1)).getById(1);
-    }
-
-    @Test
-    @DisplayName("Добавление лайка должно быть успешным")
-    void test_AddLike_ShouldBeSuccessful() throws Exception {
-        // Given
-        doNothing().when(filmService).addLike(1, 1);
-
-        // When & Then
-        mockMvc.perform(put("/films/1/like/1"))
-                .andExpect(status().isOk());
-
-        verify(filmService, times(1)).addLike(1, 1);
-    }
-
-    @Test
-    @DisplayName("Удаление лайка должно быть успешным")
-    void test_RemoveLike_ShouldBeSuccessful() throws Exception {
-        // Given
-        doNothing().when(filmService).removeLike(1, 1);
-
-        // When & Then
-        mockMvc.perform(delete("/films/1/like/1"))
-                .andExpect(status().isOk());
-
-        verify(filmService, times(1)).removeLike(1, 1);
-    }
-
-    @Test
-    @DisplayName("Получение популярных фильмов должно возвращать список")
-    void test_GetPopularFilms_ShouldReturnList() throws Exception {
-        // Given
-        Film film = createFilm(FILM_NAME, FILM_DESCRIPTION, FILM_RELEASE_DATE, FILM_DURATION);
-        film.setId(1);
-        List<Film> popularFilms = List.of(film);
-
-        when(filmService.getPopularFilms(10)).thenReturn(popularFilms);
-
-        // When & Then
-        mockMvc.perform(get("/films/popular?count=10"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(1));
-
-        verify(filmService, times(1)).getPopularFilms(10);
-    }
-
-    @Test
-    @DisplayName("Очистка фильмов должна быть успешной")
-    void test_Clear_ShouldBeSuccessful() throws Exception {
-        // Given
-        doNothing().when(filmService).clear();
-
-        // When & Then
-        mockMvc.perform(delete("/films/clear"))
-                .andExpect(status().isOk());
-
-        verify(filmService, times(1)).clear();
-    }
 }

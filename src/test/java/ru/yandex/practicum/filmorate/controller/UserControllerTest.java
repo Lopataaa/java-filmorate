@@ -1,408 +1,358 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
-import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.service.UserService;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import ru.yandex.practicum.filmorate.dto.UserCreateDto;
+import ru.yandex.practicum.filmorate.dto.UserDto;
+import ru.yandex.practicum.filmorate.dto.UserUpdateDto;
+import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-@WebMvcTest(UserController.class)
+@SpringBootTest
+@AutoConfigureMockMvc
 class UserControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private UserController userController;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private UserDbStorage userStorage;
 
-    @MockBean
-    private UserService userService;
-
-    private static final String USER_EMAIL = "test@example.com";
-    private static final String USER_LOGIN = "testuser";
-    private static final String USER_NAME = "Test User";
-    private static final LocalDate USER_BIRTHDAY = LocalDate.of(1990, 1, 1);
-
-    private User createUser(String email, String login, String name, LocalDate birthday) {
-        User user = new User();
-        user.setEmail(email);
-        user.setLogin(login);
-        user.setName(name);
-        user.setBirthday(birthday);
-        return user;
+    @BeforeEach
+    public void setUp() {
+        userStorage.getAll().forEach(user -> userStorage.delete(user.getId()));
     }
 
     @Test
-    @DisplayName("Получение всех пользователей должно возвращать пустой список при отсутствии пользователей")
-    void test_FindAll_ShouldReturnEmptyList() throws Exception {
+    @DisplayName("Создание пользователя с валидными данными")
+    public void createUserValidData() {
         // Given
-        when(userService.findAll()).thenReturn(Collections.emptyList());
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("User Name")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        // When & Then
-        mockMvc.perform(get("/users"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(0));
+        // When
+        UserDto response = userController.createUser(userDto);
 
-        verify(userService, times(1)).findAll();
+        // Then
+        assertNotNull(response);
+        assertEquals("User Name", response.getName());
+        assertEquals("user@email.com", response.getEmail());
+        assertTrue(response.getId() > 0);
     }
 
     @Test
-    @DisplayName("Получение всех пользователей должно возвращать список пользователей")
-    void test_FindAll_ShouldReturnUsersList() throws Exception {
+    @DisplayName("Создание пользователя с пустым именем")
+    public void createUserWithEmptyName() {
         // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        user.setId(1);
-        List<User> users = List.of(user);
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("")  // пустое имя
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        when(userService.findAll()).thenReturn(users);
+        // When
+        UserDto response = userController.createUser(userDto);
 
-        // When & Then
-        mockMvc.perform(get("/users"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].email").value(USER_EMAIL))
-                .andExpect(jsonPath("$[0].login").value(USER_LOGIN));
-
-        verify(userService, times(1)).findAll();
+        // Then
+        assertNotNull(response);
+        assertEquals("login", response.getName());
     }
 
     @Test
-    @DisplayName("Создание пользователя с валидными данными должно быть успешным")
-    void test_Create_ValidUserData_ShouldCreateUser() throws Exception {
+    @DisplayName("Создание пользователя с null именем")
+    public void createUserWithNullName() {
         // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        User createdUser = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        createdUser.setId(1);
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name(null)  // null имя
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        when(userService.create(any(User.class))).thenReturn(createdUser);
+        // When
+        UserDto response = userController.createUser(userDto);
 
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.email").value(USER_EMAIL))
-                .andExpect(jsonPath("$.login").value(USER_LOGIN))
-                .andExpect(jsonPath("$.name").value(USER_NAME))
-                .andExpect(jsonPath("$.birthday").value(USER_BIRTHDAY.toString()));
-
-        verify(userService, times(1)).create(any(User.class));
+        // Then
+        assertNotNull(response);
+        assertEquals("login", response.getName());
     }
 
     @Test
-    @DisplayName("Создание пользователя с пустым email должно вызывать исключение")
-    void test_Create_UserWithEmptyEmail_ShouldThrowValidationException() throws Exception {
+    @DisplayName("Создание пользователя с именем из пробелов")
+    public void createUserWithWhitespaceName() {
         // Given
-        User user = createUser("", USER_LOGIN, USER_NAME, USER_BIRTHDAY);
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("   ")  // пробелы
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Электронная почта не может быть пустой и должна содержать символ @"));
+        // When
+        UserDto response = userController.createUser(userDto);
 
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Электронная почта не может быть пустой и должна содержать символ @"));
-
-        verify(userService, times(1)).create(any(User.class));
+        // Then
+        assertNotNull(response);
+        assertEquals("login", response.getName());
     }
 
     @Test
-    @DisplayName("Создание пользователя с email без символа @ должно вызывать исключение")
-    void test_Create_UserWithInvalidEmail_ShouldThrowValidationException() throws Exception {
-        // Given
-        User user = createUser("invalid-email", USER_LOGIN, USER_NAME, USER_BIRTHDAY);
+    @DisplayName("Обновление существующего пользователя")
+    public void updateUserExistingUser() {
+        UserCreateDto createDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Электронная почта не может быть пустой и должна содержать символ @"));
+        UserDto createdUser = userController.createUser(createDto);
+        assertNotNull(createdUser);
 
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Электронная почта не может быть пустой и должна содержать символ @"));
+        UserUpdateDto updateDto = UserUpdateDto.builder()
+                .id(createdUser.getId())
+                .email("updated@email.com")
+                .login("newlogin")
+                .name("New Name")
+                .birthday(LocalDate.of(1995, 1, 1))
+                .build();
 
-        verify(userService, times(1)).create(any(User.class));
+        // When
+        UserDto updatedUser = userController.updateUser(updateDto);
+
+        // Then
+        assertNotNull(updatedUser);
+        assertEquals("New Name", updatedUser.getName());
+        assertEquals("updated@email.com", updatedUser.getEmail());
+        assertEquals("newlogin", updatedUser.getLogin());
     }
 
     @Test
-    @DisplayName("Создание пользователя с логином содержащим пробелы должно вызывать исключение")
-    void test_Create_UserWithSpacesInLogin_ShouldThrowValidationException() throws Exception {
+    @DisplayName("Обновление несуществующего пользователя")
+    public void updateUserNonExistingUser() {
         // Given
-        User user = createUser(USER_EMAIL, "login with spaces", USER_NAME, USER_BIRTHDAY);
-
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Логин не может быть пустым и содержать пробелы"));
+        UserUpdateDto updateDto = UserUpdateDto.builder()
+                .id(999)  // несуществующий ID
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .build();
 
         // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Логин не может быть пустым и содержать пробелы"));
-
-        verify(userService, times(1)).create(any(User.class));
+        assertThrows(Exception.class, () -> userController.updateUser(updateDto));
     }
 
     @Test
-    @DisplayName("Создание пользователя с пустым именем должно использовать логин как имя")
-    void test_Create_UserWithEmptyName_ShouldUseLoginAsName() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, "", USER_BIRTHDAY);
-        User createdUser = createUser(USER_EMAIL, USER_LOGIN, USER_LOGIN, USER_BIRTHDAY);
-        createdUser.setId(1);
+    @DisplayName("Обновление пользователя с пустым именем")
+    public void updateUserWithEmptyName() {
+        UserCreateDto createDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        when(userService.create(any(User.class))).thenReturn(createdUser);
+        UserDto createdUser = userController.createUser(createDto);
+        assertNotNull(createdUser);
 
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value(USER_LOGIN));
+        UserUpdateDto updateDto = UserUpdateDto.builder()
+                .id(createdUser.getId())
+                .email("updated@email.com")
+                .login("newlogin")
+                .name("")  // пустое имя
+                .birthday(LocalDate.of(1995, 1, 1))
+                .build();
 
-        verify(userService, times(1)).create(any(User.class));
+        // When
+        UserDto updatedUser = userController.updateUser(updateDto);
+
+        // Then
+        assertNotNull(updatedUser);
+        assertEquals("newlogin", updatedUser.getName());
     }
 
     @Test
-    @DisplayName("Создание пользователя с null именем должно использовать логин как имя")
-    void test_Create_UserWithNullName_ShouldUseLoginAsName() throws Exception {
-        // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, null, USER_BIRTHDAY);
-        User createdUser = createUser(USER_EMAIL, USER_LOGIN, USER_LOGIN, USER_BIRTHDAY);
-        createdUser.setId(1);
+    @DisplayName("Получение всех пользователей из пустого списка")
+    public void getAllUsersEmptyList() {
+        // When
+        List<UserDto> users = userController.getAllUsers();
 
-        when(userService.create(any(User.class))).thenReturn(createdUser);
-
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value(USER_LOGIN));
-
-        verify(userService, times(1)).create(any(User.class));
+        // Then
+        assertNotNull(users);
+        assertTrue(users.isEmpty());
     }
 
     @Test
-    @DisplayName("Создание пользователя с датой рождения в будущем должно вызывать исключение")
-    void test_Create_UserWithFutureBirthday_ShouldThrowValidationException() throws Exception {
+    @DisplayName("Получение всех пользователей с данными")
+    public void getAllUsersWithData() {
         // Given
-        LocalDate futureDate = LocalDate.now().plusDays(1);
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, futureDate);
+        UserCreateDto user1 = UserCreateDto.builder()
+                .email("user1@email.com")
+                .login("login1")
+                .name("User One")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Дата рождения не может быть в будущем"));
+        UserCreateDto user2 = UserCreateDto.builder()
+                .email("user2@email.com")
+                .login("login2")
+                .name("User Two")
+                .birthday(LocalDate.of(1995, 1, 1))
+                .password("password123")
+                .build();
 
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Дата рождения не может быть в будущем"));
+        userController.createUser(user1);
+        userController.createUser(user2);
 
-        verify(userService, times(1)).create(any(User.class));
+        // When
+        List<UserDto> users = userController.getAllUsers();
+
+        // Then
+        assertEquals(2, users.size());
+        assertTrue(users.stream().anyMatch(u -> u.getName().equals("User One")));
+        assertTrue(users.stream().anyMatch(u -> u.getName().equals("User Two")));
     }
 
     @Test
-    @DisplayName("Обновление несуществующего пользователя должно вызывать исключение")
-    void test_Update_NonExistentUser_ShouldThrowNotFoundException() throws Exception {
+    @DisplayName("Создание нескольких пользователей и проверка уникальности ID")
+    public void createMultipleUsersCheckIds() {
         // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        user.setId(9999);
+        UserCreateDto user1 = UserCreateDto.builder()
+                .email("user1@email.com")
+                .login("login1")
+                .name("User 1")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        when(userService.update(any(User.class)))
-                .thenThrow(new RuntimeException("Пользователь с id=9999 не найден"));
+        UserCreateDto user2 = UserCreateDto.builder()
+                .email("user2@email.com")
+                .login("login2")
+                .name("User 2")
+                .birthday(LocalDate.of(1995, 1, 1))
+                .password("password123")
+                .build();
 
-        // When & Then
-        mockMvc.perform(put("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.error").value("Внутренняя ошибка сервера"));
+        UserCreateDto user3 = UserCreateDto.builder()
+                .email("user3@email.com")
+                .login("login3")
+                .name("User 3")
+                .birthday(LocalDate.of(2000, 1, 1))
+                .password("password123")
+                .build();
 
-        verify(userService, times(1)).update(any(User.class));
+        // When
+        UserDto result1 = userController.createUser(user1);
+        UserDto result2 = userController.createUser(user2);
+        UserDto result3 = userController.createUser(user3);
+
+        // Then
+        assertNotNull(result1);
+        assertNotNull(result2);
+        assertNotNull(result3);
+
+        assertNotEquals(result1.getId(), result2.getId());
+        assertNotEquals(result2.getId(), result3.getId());
+        assertNotEquals(result1.getId(), result3.getId());
     }
 
     @Test
-    @DisplayName("Обновление пользователя с валидными данными должно быть успешным")
-    void test_Update_ValidUser_ShouldUpdateUser() throws Exception {
+    @DisplayName("Создание пользователя с датой рождения в будущем")
+    public void createUserWithFutureBirthday() {
         // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        user.setId(1);
-
-        User updatedUser = createUser("updated@example.com", USER_LOGIN, "Updated Name", USER_BIRTHDAY);
-        updatedUser.setId(1);
-
-        when(userService.update(any(User.class))).thenReturn(updatedUser);
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.now().plusDays(1))
+                .password("password123")
+                .build();
 
         // When & Then
-        mockMvc.perform(put("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Updated Name"))
-                .andExpect(jsonPath("$.email").value("updated@example.com"));
-
-        verify(userService, times(1)).update(any(User.class));
+        assertThrows(Exception.class, () -> userController.createUser(userDto));
     }
 
     @Test
-    @DisplayName("Создание пользователя с пустым логином должно вызывать исключение")
-    void test_Create_UserWithEmptyLogin_ShouldThrowValidationException() throws Exception {
+    @DisplayName("Создание пользователя с текущей датой рождения")
+    public void createUserWithCurrentDateBirthday() {
         // Given
-        User user = createUser(USER_EMAIL, "", USER_NAME, USER_BIRTHDAY);
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.now())
+                .password("password123")
+                .build();
 
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Логин не может быть пустым и содержать пробелы"));
+        // When
+        UserDto response = userController.createUser(userDto);
 
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Логин не может быть пустым и содержать пробелы"));
-
-        verify(userService, times(1)).create(any(User.class));
+        // Then
+        assertNotNull(response);
+        assertEquals("Name", response.getName());
     }
 
     @Test
-    @DisplayName("Создание пользователя с null датой рождения должно вызывать исключение")
-    void test_Create_UserWithNullBirthday_ShouldThrowValidationException() throws Exception {
+    @DisplayName("Создание пользователя с очень старой датой рождения")
+    public void createUserWithVeryOldBirthday() {
         // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, null);
+        UserCreateDto userDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Name")
+                .birthday(LocalDate.of(1900, 1, 1))
+                .password("password123")
+                .build();
 
-        when(userService.create(any(User.class)))
-                .thenThrow(new ValidationException("Дата рождения должна быть указана"));
+        // When
+        UserDto response = userController.createUser(userDto);
 
-        // When & Then
-        mockMvc.perform(post("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Дата рождения должна быть указана"));
-
-        verify(userService, times(1)).create(any(User.class));
+        // Then
+        assertNotNull(response);
+        assertEquals("Name", response.getName());
     }
 
     @Test
-    @DisplayName("Получение пользователя по ID должно возвращать пользователя")
-    void test_GetById_ShouldReturnUser() throws Exception {
+    @DisplayName("Получение пользователя по ID")
+    public void getUserById() {
         // Given
-        User user = createUser(USER_EMAIL, USER_LOGIN, USER_NAME, USER_BIRTHDAY);
-        user.setId(1);
+        UserCreateDto createDto = UserCreateDto.builder()
+                .email("user@email.com")
+                .login("login")
+                .name("Test User")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .password("password123")
+                .build();
 
-        when(userService.getById(1)).thenReturn(user);
+        UserDto createdUser = userController.createUser(createDto);
 
-        // When & Then
-        mockMvc.perform(get("/users/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.email").value(USER_EMAIL))
-                .andExpect(jsonPath("$.login").value(USER_LOGIN));
+        // When
+        UserDto foundUser = userController.getUser(createdUser.getId());
 
-        verify(userService, times(1)).getById(1);
-    }
-
-    @Test
-    @DisplayName("Добавление друга должно быть успешным")
-    void test_AddFriend_ShouldBeSuccessful() throws Exception {
-        // Given
-        doNothing().when(userService).addFriend(1, 2);
-
-        // When & Then
-        mockMvc.perform(put("/users/1/friends/2"))
-                .andExpect(status().isOk());
-
-        verify(userService, times(1)).addFriend(1, 2);
-    }
-
-    @Test
-    @DisplayName("Удаление друга должно быть успешным")
-    void test_RemoveFriend_ShouldBeSuccessful() throws Exception {
-        // Given
-        doNothing().when(userService).removeFriend(1, 2);
-
-        // When & Then
-        mockMvc.perform(delete("/users/1/friends/2"))
-                .andExpect(status().isOk());
-
-        verify(userService, times(1)).removeFriend(1, 2);
-    }
-
-    @Test
-    @DisplayName("Получение списка друзей должно возвращать список")
-    void test_GetFriends_ShouldReturnFriendsList() throws Exception {
-        // Given
-        User friend = createUser("friend@example.com", "friend", "Friend User", USER_BIRTHDAY);
-        friend.setId(2);
-        List<User> friends = List.of(friend);
-
-        when(userService.getFriends(1)).thenReturn(friends);
-
-        // When & Then
-        mockMvc.perform(get("/users/1/friends"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(2))
-                .andExpect(jsonPath("$[0].login").value("friend"));
-
-        verify(userService, times(1)).getFriends(1);
-    }
-
-    @Test
-    @DisplayName("Получение общих друзей должно возвращать список")
-    void test_GetCommonFriends_ShouldReturnCommonFriendsList() throws Exception {
-        // Given
-        User commonFriend = createUser("common@example.com", "common", "Common Friend", USER_BIRTHDAY);
-        commonFriend.setId(3);
-        List<User> commonFriends = List.of(commonFriend);
-
-        when(userService.getCommonFriends(1, 2)).thenReturn(commonFriends);
-
-        // When & Then
-        mockMvc.perform(get("/users/1/friends/common/2"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(3))
-                .andExpect(jsonPath("$[0].login").value("common"));
-
-        verify(userService, times(1)).getCommonFriends(1, 2);
-    }
-
-    @Test
-    @DisplayName("Очистка пользователей должна быть успешной")
-    void test_Clear_ShouldBeSuccessful() throws Exception {
-        // Given
-        doNothing().when(userService).clear();
-
-        // When & Then
-        mockMvc.perform(delete("/users/clear"))
-                .andExpect(status().isOk());
-
-        verify(userService, times(1)).clear();
+        // Then
+        assertNotNull(foundUser);
+        assertEquals(createdUser.getId(), foundUser.getId());
+        assertEquals("Test User", foundUser.getName());
     }
 }

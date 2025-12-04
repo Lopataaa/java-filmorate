@@ -1,91 +1,72 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.dto.FilmDto;
+import ru.yandex.practicum.filmorate.dto.FilmCreateDto;
+import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.mapper.FilmMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
-@Slf4j
 @RestController
 @RequestMapping("/films")
-@RequiredArgsConstructor
 public class FilmController {
+
     private final FilmService filmService;
+    private final FilmMapper filmMapper;
+
+    @Autowired
+    public FilmController(FilmService filmService, FilmMapper filmMapper) {
+        this.filmService = filmService;
+        this.filmMapper = filmMapper;
+    }
 
     @GetMapping
-    public ResponseEntity<List<Film>> findAll() {
-        log.info("GET /films - получение списка всех фильмов");
-        List<Film> films = filmService.findAll();
-        log.debug("GET /films - найдено {} фильмов", films.size());
-        return ResponseEntity.ok(films);
+    public List<FilmDto> getAllFilms() {
+        return filmService.getAllFilms().stream()
+                .map(filmMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Film> getById(@PathVariable Integer id) {
-        log.info("GET /films/{} - получение фильма по ID", id);
-        Film film = filmService.getById(id);
-        log.debug("GET /films/{} - найден фильм: '{}'", id, film.getName());
-        return ResponseEntity.ok(film);
+    public FilmDto getFilm(@PathVariable int id) {
+        Film film = filmService.getFilmById(id);
+        return filmMapper.toDto(film);
     }
 
     @PostMapping
-    public ResponseEntity<Film> create(@RequestBody Film film) {
-        log.info("POST /films - попытка создания нового фильма: {}", film.getName());
-        log.debug("POST /films - детали создаваемого фильма: {}", film);
-
-        Film createdFilm = filmService.create(film);
-
-        log.info("POST /films - фильм успешно создан с ID: {}", createdFilm.getId());
-        log.debug("POST /films - созданный фильм: {}", createdFilm);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdFilm);
+    public FilmDto createFilm(@Valid @RequestBody FilmCreateDto dto) {
+        Film created = filmService.createFilm(dto); // передаём DTO
+        return filmMapper.toDto(created);
     }
 
     @PutMapping
-    public ResponseEntity<Film> update(@RequestBody Film film) {
-        log.info("PUT /films - попытка обновления фильма с ID: {}", film.getId());
-        log.debug("PUT /films - обновляемые данные: {}", film);
-
-        Film updatedFilm = filmService.update(film);
-
-        log.info("PUT /films - фильм с ID {} успешно обновлен", updatedFilm.getId());
-        log.debug("PUT /films - обновленный фильм: {}", updatedFilm);
-        return ResponseEntity.ok(updatedFilm);
+    public FilmDto updateFilm(@Valid @RequestBody FilmUpdateDto dto) {
+        Film updated = filmService.updateFilm(dto);
+        return filmMapper.toDto(updated);
     }
 
     @PutMapping("/{id}/like/{userId}")
-    public ResponseEntity<Void> addLike(@PathVariable Integer id, @PathVariable Integer userId) {
-        log.info("PUT /films/{}/like/{} - добавление лайка", id, userId);
+    public void addLike(@PathVariable int id, @PathVariable int userId) {
         filmService.addLike(id, userId);
-        log.debug("PUT /films/{}/like/{} - лайк успешно добавлен", id, userId);
-        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}/like/{userId}")
-    public ResponseEntity<Void> removeLike(@PathVariable Integer id, @PathVariable Integer userId) {
-        log.info("DELETE /films/{}/like/{} - удаление лайка", id, userId);
+    public void removeLike(@PathVariable int id, @PathVariable int userId) {
         filmService.removeLike(id, userId);
-        log.debug("DELETE /films/{}/like/{} - лайк успешно удален", id, userId);
-        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/popular")
-    public ResponseEntity<List<Film>> getPopularFilms(
-            @RequestParam(defaultValue = "10") Integer count) {
-        log.info("GET /films/popular - получение {} популярных фильмов", count);
+    public List<FilmDto> getPopularFilms(@RequestParam(defaultValue = "10") int count) {
         List<Film> popularFilms = filmService.getPopularFilms(count);
-        log.debug("GET /films/popular - найдено {} популярных фильмов", popularFilms.size());
-        return ResponseEntity.ok(popularFilms);
-    }
-
-    @DeleteMapping("/clear")
-    public ResponseEntity<Void> clear() {
-        log.info("DELETE /films/clear - очистка всех фильмов");
-        filmService.clear();
-        return ResponseEntity.ok().build();
+        return popularFilms.stream()
+                .map(filmMapper::toDto)
+                .collect(Collectors.toList());
     }
 }
