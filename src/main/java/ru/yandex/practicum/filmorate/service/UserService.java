@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
@@ -31,12 +32,8 @@ public class UserService {
     }
 
     public User getUserById(int id) {
-        log.debug("Поиск пользователя с id {}", id);
-        User user = userStorage.getById(id).orElseThrow(() -> {
-            log.error("Пользователь с id {} не найден", id);
-            return new IllegalArgumentException("Пользователь с id " + id + " не найден");
-        });
-        return user;
+        return userStorage.getById(id)
+                .orElseThrow(() -> new NotFoundException("Пользователь с id " + id + " не найден"));
     }
 
     public User createUser(User user) {
