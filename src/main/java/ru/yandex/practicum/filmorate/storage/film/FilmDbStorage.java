@@ -324,4 +324,27 @@ public class FilmDbStorage implements FilmStorage {
     public JdbcTemplate getJdbcTemplate() {
         return jdbcTemplate;
     }
+
+    @Override
+    public List<Film> getPopularFilms(int count) {
+        String sql = "SELECT f.*, m.id AS mpa_id, m.name AS mpa_name, m.description AS mpa_description, " +
+                "COUNT(l.user_id) AS likes_count " +
+                "FROM films f " +
+                "LEFT JOIN mpa_ratings m ON f.mpa_id = m.id " +
+                "LEFT JOIN likes l ON f.id = l.film_id " +
+                "GROUP BY f.id, m.id, m.name, m.description " +
+                "ORDER BY likes_count DESC " +
+                "LIMIT ?";
+
+        List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Film film = mapFilm(rs, rowNum);
+            return film;
+        }, count);
+
+        if (!films.isEmpty()) {
+            loadGenresForFilms(films);
+        }
+
+        return films;
+    }
 }

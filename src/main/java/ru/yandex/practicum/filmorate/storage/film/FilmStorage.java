@@ -28,4 +28,6 @@ public interface FilmStorage {
     void addGenre(int filmId, int genreId);
 
     void removeAllGenres(int filmId);
+
+    List<Film> getPopularFilms(int count);
 }

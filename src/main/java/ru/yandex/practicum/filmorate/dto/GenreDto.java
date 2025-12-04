@@ -13,7 +13,7 @@ import jakarta.validation.constraints.*;
 @AllArgsConstructor
 public class GenreDto {
     @NotNull(message = "ID жанра не может быть null")
-    private Long id;
+    private Integer id;
 
     @NotBlank(message = "Название жанра не может быть пустым")
     private String name;

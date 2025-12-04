@@ -13,7 +13,7 @@ public class MpaMapper {
         }
 
         return MpaDto.builder()
-                .id((long) mpa.getId())
+                .id(mpa.getId())
                 .name(mpa.getName())
                 .build();
     }

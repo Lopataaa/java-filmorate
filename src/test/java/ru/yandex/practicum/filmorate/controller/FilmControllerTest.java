@@ -8,6 +8,8 @@ import org.springframework.context.annotation.Import;
 import ru.yandex.practicum.filmorate.dto.FilmCreateDto;
 import ru.yandex.practicum.filmorate.dto.FilmDto;
 import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
+import ru.yandex.practicum.filmorate.dto.MpaDto;
+import ru.yandex.practicum.filmorate.dto.GenreDto;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
@@ -19,6 +21,7 @@ import ru.yandex.practicum.filmorate.mapper.FilmMapper;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -33,7 +36,13 @@ class FilmControllerTest {
     @DisplayName("Добавление фильма с валидными данными")
     public void addFilmValidData() {
         // Given
-        FilmCreateDto filmDto = FilmCreateDto.builder().name("Test Film").description("Test Description").releaseDate(LocalDate.of(2000, 1, 1)).duration(120).mpaId(1).build();
+        FilmCreateDto filmDto = FilmCreateDto.builder()
+                .name("Test Film")
+                .description("Test Description")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())  // MpaDto вместо mpaId
+                .build();
 
         // When
         FilmDto response = filmController.createFilm(filmDto);
@@ -54,22 +63,34 @@ class FilmControllerTest {
                 .description("Very old film")
                 .releaseDate(LocalDate.of(1890, 1, 1))
                 .duration(90)
-                .mpaId(1)
+                .mpa(MpaDto.builder().id(1).build())
                 .build();
 
-        // When & Then Заченила ValidationException на IllegalArgumentException
+        // When & Then
         assertThrows(ValidationException.class, () -> filmController.createFilm(filmDto));
     }
 
     @Test
     @DisplayName("Обновление существующего фильма")
     public void updateFilmExistingFilm() {
-        FilmCreateDto createDto = FilmCreateDto.builder().name("Original").description("Original desc").releaseDate(LocalDate.of(2000, 1, 1)).duration(120).mpaId(1).build();
+        FilmCreateDto createDto = FilmCreateDto.builder()
+                .name("Original")
+                .description("Original desc")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
         FilmDto createdFilm = filmController.createFilm(createDto);
         assertNotNull(createdFilm);
 
-        FilmUpdateDto updateDto = FilmUpdateDto.builder().id(createdFilm.getId()).name("Updated").description("Updated desc").releaseDate(LocalDate.of(2001, 1, 1)).duration(150).mpaId(2)  // новый MPA
+        FilmUpdateDto updateDto = FilmUpdateDto.builder()
+                .id(createdFilm.getId())
+                .name("Updated")
+                .description("Updated desc")
+                .releaseDate(LocalDate.of(2001, 1, 1))
+                .duration(150)
+                .mpa(MpaDto.builder().id(2).build())  // новый MPA
                 .build();
 
         // When
@@ -86,8 +107,14 @@ class FilmControllerTest {
     @DisplayName("Обновление несуществующего фильма")
     public void updateFilmNonExistingFilm() {
         // Given
-        FilmUpdateDto updateDto = FilmUpdateDto.builder().id(999)  // int
-                .name("Non Existing").description("Description").releaseDate(LocalDate.of(2000, 1, 1)).duration(120).mpaId(1).build();
+        FilmUpdateDto updateDto = FilmUpdateDto.builder()
+                .id(999)  // int
+                .name("Non Existing")
+                .description("Description")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
         // When & Then
         assertThrows(Exception.class, () -> filmController.updateFilm(updateDto));
@@ -108,9 +135,21 @@ class FilmControllerTest {
     @DisplayName("Получение всех фильмов с данными")
     public void getAllFilmsWithData() {
         // Given
-        FilmCreateDto film1 = FilmCreateDto.builder().name("Film 1").description("Desc 1").releaseDate(LocalDate.of(2000, 1, 1)).duration(120).mpaId(1).build();
+        FilmCreateDto film1 = FilmCreateDto.builder()
+                .name("Film 1")
+                .description("Desc 1")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
-        FilmCreateDto film2 = FilmCreateDto.builder().name("Film 2").description("Desc 2").releaseDate(LocalDate.of(2001, 1, 1)).duration(150).mpaId(1).build();
+        FilmCreateDto film2 = FilmCreateDto.builder()
+                .name("Film 2")
+                .description("Desc 2")
+                .releaseDate(LocalDate.of(2001, 1, 1))
+                .duration(150)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
         filmController.createFilm(film1);
         filmController.createFilm(film2);
@@ -126,11 +165,29 @@ class FilmControllerTest {
     @DisplayName("Добавление нескольких фильмов и проверка уникальности ID")
     public void addMultipleFilmsCheckIds() {
         // Given
-        FilmCreateDto film1 = FilmCreateDto.builder().name("Film 1").description("Desc 1").releaseDate(LocalDate.of(2000, 1, 1)).duration(120).mpaId(1).build();
+        FilmCreateDto film1 = FilmCreateDto.builder()
+                .name("Film 1")
+                .description("Desc 1")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
-        FilmCreateDto film2 = FilmCreateDto.builder().name("Film 2").description("Desc 2").releaseDate(LocalDate.of(2001, 1, 1)).duration(150).mpaId(1).build();
+        FilmCreateDto film2 = FilmCreateDto.builder()
+                .name("Film 2")
+                .description("Desc 2")
+                .releaseDate(LocalDate.of(2001, 1, 1))
+                .duration(150)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
-        FilmCreateDto film3 = FilmCreateDto.builder().name("Film 3").description("Desc 3").releaseDate(LocalDate.of(2002, 1, 1)).duration(180).mpaId(1).build();
+        FilmCreateDto film3 = FilmCreateDto.builder()
+                .name("Film 3")
+                .description("Desc 3")
+                .releaseDate(LocalDate.of(2002, 1, 1))
+                .duration(180)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
         // When
         FilmDto result1 = filmController.createFilm(film1);
@@ -151,7 +208,13 @@ class FilmControllerTest {
     @DisplayName("Получение фильма по ID")
     public void getFilmById() {
         // Given
-        FilmCreateDto createDto = FilmCreateDto.builder().name("Test Film").description("Test Description").releaseDate(LocalDate.of(2000, 1, 1)).duration(120).mpaId(1).build();
+        FilmCreateDto createDto = FilmCreateDto.builder()
+                .name("Test Film")
+                .description("Test Description")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .build();
 
         FilmDto createdFilm = filmController.createFilm(createDto);
 
@@ -162,6 +225,32 @@ class FilmControllerTest {
         assertNotNull(foundFilm);
         assertEquals(createdFilm.getId(), foundFilm.getId());
         assertEquals("Test Film", foundFilm.getName());
+    }
+
+    @Test
+    @DisplayName("Добавление фильма с жанрами")
+    public void addFilmWithGenres() {
+        // Given
+        FilmCreateDto filmDto = FilmCreateDto.builder()
+                .name("Film with genres")
+                .description("Test Description")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(120)
+                .mpa(MpaDto.builder().id(1).build())
+                .genres(Set.of(
+                        GenreDto.builder().id(1).build(),
+                        GenreDto.builder().id(2).build()
+                ))
+                .build();
+
+        // When
+        FilmDto response = filmController.createFilm(filmDto);
+
+        // Then
+        assertNotNull(response);
+        assertEquals("Film with genres", response.getName());
+        assertNotNull(response.getGenres());
+        assertEquals(2, response.getGenres().size());
     }
 
 }

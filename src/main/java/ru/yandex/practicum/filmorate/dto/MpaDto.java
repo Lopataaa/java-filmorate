@@ -14,7 +14,7 @@ import jakarta.validation.constraints.NotNull;
 @AllArgsConstructor
 public class MpaDto {
     @NotNull(message = "ID MPA не может быть null")
-    private Long id;
+    private Integer id;
 
     @NotBlank(message = "Название MPA не может быть пустым")
     private String name;

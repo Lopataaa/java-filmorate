@@ -37,7 +37,7 @@ public class FilmMapper {
         if (mpa == null) return null;
 
         return MpaDto.builder()
-                .id((long) mpa.getId())
+                .id(mpa.getId())
                 .name(mpa.getName())
                 .build();
     }
@@ -46,7 +46,7 @@ public class FilmMapper {
         if (genre == null) return null;
 
         return GenreDto.builder()
-                .id((long) genre.getId())
+                .id(genre.getId())
                 .name(genre.getName())
                 .build();
     }

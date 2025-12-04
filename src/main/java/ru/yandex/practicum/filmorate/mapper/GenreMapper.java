@@ -13,7 +13,7 @@ public class GenreMapper {
         }
 
         return GenreDto.builder()
-                .id((long) genre.getId())
+                .id(genre.getId())
                 .name(genre.getName())
                 .build();
     }

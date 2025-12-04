@@ -41,15 +41,15 @@ public class FilmController {
     }
 
     @PostMapping
-    public FilmDto createFilm(@Valid @RequestBody FilmCreateDto filmCreateDto) {
-        Film createdFilm = filmService.createFilm(filmCreateDto);
-        return filmMapper.toDto(createdFilm);
+    public FilmDto createFilm(@Valid @RequestBody FilmCreateDto dto) {
+        Film created = filmService.createFilm(dto); // передаём DTO
+        return filmMapper.toDto(created);
     }
 
     @PutMapping
-    public FilmDto updateFilm(@Valid @RequestBody FilmUpdateDto filmUpdateDto) {
-        Film updatedFilm = filmService.updateFilm(filmUpdateDto);
-        return filmMapper.toDto(updatedFilm);
+    public FilmDto updateFilm(@Valid @RequestBody FilmUpdateDto dto) {
+        Film updated = filmService.updateFilm(dto);
+        return filmMapper.toDto(updated);
     }
 
     @PutMapping("/{id}/like/{userId}")

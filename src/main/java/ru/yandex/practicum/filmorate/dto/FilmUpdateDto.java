@@ -30,9 +30,9 @@ public class FilmUpdateDto {
     private Integer duration;
 
     @NotNull(message = "MPA рейтинг не может быть null")
-    private Integer mpaId; //  было int, стало Integer
+    private MpaDto mpa;
 
-    private Set<Integer> genreIds;
+    private Set<GenreDto> genres;
 
     //  УДАЛЕН метод toEntity()  он больше не нужен
 }
