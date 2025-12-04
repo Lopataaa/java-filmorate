@@ -40,18 +40,56 @@ public class FilmService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public Film createFilm(FilmCreateDto filmCreateDto) {
-        log.debug("Создание нового фильма из DTO: {}", filmCreateDto.getName());
+    public Film createFilm(Map<String, Object> filmData) {
+        Film film = new Film();
+        film.setName((String) filmData.get("name"));
+        film.setDescription((String) filmData.get("description"));
 
-        Film film = convertToFilm(filmCreateDto);
+        if (filmData.get("releaseDate") != null) {
+            film.setReleaseDate(LocalDate.parse((String) filmData.get("releaseDate")));
+        }
+
+        if (filmData.get("duration") != null) {
+            film.setDuration(((Number) filmData.get("duration")).intValue());
+        }
+
+        if (filmData.get("mpa") != null) {
+            Map<String, Object> mpaMap = (Map<String, Object>) filmData.get("mpa");
+            if (mpaMap.get("id") != null) {
+                Mpa mpa = new Mpa();
+                mpa.setId(((Number) mpaMap.get("id")).intValue());
+                film.setMpa(mpa);
+            }
+        }
+
+        if (filmData.get("genres") != null) {
+            List<Map<String, Object>> genresList = (List<Map<String, Object>>) filmData.get("genres");
+            Set<Genre> genres = new HashSet<>();
+            for (Map<String, Object> genreMap : genresList) {
+                if (genreMap.get("id") != null) {
+                    Genre genre = new Genre();
+                    genre.setId(((Number) genreMap.get("id")).intValue());
+                    genres.add(genre);
+                }
+            }
+            film.setGenres(genres);
+        }
 
         return createFilmFromModel(film);
     }
 
-    public Film updateFilm(FilmUpdateDto filmUpdateDto) {
-        log.debug("Обновление фильма из DTO с id {}", filmUpdateDto.getId());
+    public Film createFilm(FilmCreateDto dto) {
+        log.debug("Создание нового фильма: {}", dto.getName());
 
-        Film film = convertToFilm(filmUpdateDto);
+        Film film = convertToFilm(dto);
+
+        return createFilmFromModel(film);
+    }
+
+    public Film updateFilm(FilmUpdateDto dto) {
+        log.debug("Обновление фильма с id {}", dto.getId());
+
+        Film film = convertToFilm(dto);
 
         return updateFilmFromModel(film);
     }
@@ -200,13 +238,6 @@ public class FilmService {
         return films;
     }
 
-//    public List<Film> getAllFilms() {
-//        log.debug("Получение списка всех фильмов");
-//        List<Film> films = filmStorage.getAll();
-//        log.debug("Получено {} фильмов", films.size());
-//        return films;
-//    }
-
     public Film getFilmById(int id) {
         log.debug("Поиск фильма с id {}", id);
 
@@ -216,82 +247,6 @@ public class FilmService {
         log.debug("Найден фильм: {} (id: {})", film.getName(), film.getId());
         return film;
     }
-
-//    public Film createFilm(FilmCreateDto dto) {
-//        log.debug("Создание нового фильма: {}", dto.getName());
-//
-//        if (dto.getReleaseDate() != null &&
-//                dto.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
-//            throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
-//        }
-//
-//        Mpa mpa = null;
-//        if (dto.getMpaId() != null && dto.getMpaId() > 0) {
-//            mpa = mpaStorage.getMpaRatingById(dto.getMpaId())
-//                    .orElseThrow(() -> new ValidationException("Недопустимый рейтинг MPA"));
-//        }
-//
-//        Set<Genre> genres = new LinkedHashSet<>();
-//        if (dto.getGenreIds() != null) {
-//            for (Integer id : dto.getGenreIds()) {
-//                if (id == null || id <= 0) continue;
-//                Genre g = genreStorage.getGenreById(id)
-//                        .orElseThrow(() -> new ValidationException("Недопустимый ID жанра: " + id));
-//                genres.add(g);
-//            }
-//        }
-//
-//        Film film = new Film();
-//        film.setName(dto.getName());
-//        film.setDescription(dto.getDescription());
-//        film.setReleaseDate(dto.getReleaseDate());
-//        film.setDuration(dto.getDuration());
-//        film.setMpa(mpa);
-//        film.setGenres(genres);
-//
-//        Film saved = filmStorage.create(film);
-//        log.info("Создан новый фильм: '{}' (id: {})", saved.getName(), saved.getId());
-//        return saved;
-//    }
-
-//    public Film updateFilm(FilmUpdateDto dto) {
-//        log.debug("Обновление фильма с id {}", dto.getId());
-//
-//        Film existing = filmStorage.getById(dto.getId())
-//                .orElseThrow(() -> new ValidationException("Фильм с id " + dto.getId() + " не найден"));
-//
-//        if (dto.getReleaseDate() != null &&
-//                dto.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
-//            throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
-//        }
-//
-//        Mpa mpa = null;
-//        if (dto.getMpaId() != null && dto.getMpaId() > 0) {
-//            mpa = mpaStorage.getMpaRatingById(dto.getMpaId())
-//                    .orElseThrow(() -> new ValidationException("Недопустимый рейтинг MPA"));
-//        }
-//
-//        Set<Genre> genres = new LinkedHashSet<>();
-//        if (dto.getGenreIds() != null) {
-//            for (Integer id : dto.getGenreIds()) {
-//                if (id == null || id <= 0) continue;
-//                Genre g = genreStorage.getGenreById(id)
-//                        .orElseThrow(() -> new ValidationException("Недопустимый ID жанра: " + id));
-//                genres.add(g);
-//            }
-//        }
-//
-//        existing.setName(dto.getName());
-//        existing.setDescription(dto.getDescription());
-//        existing.setReleaseDate(dto.getReleaseDate());
-//        existing.setDuration(dto.getDuration());
-//        existing.setMpa(mpa);
-//        existing.setGenres(genres);
-//
-//        Film updated = filmStorage.update(existing);
-//        log.info("Обновлен фильм: '{}' (id: {})", updated.getName(), updated.getId());
-//        return updated;
-//    }
 
     public void addLike(int filmId, int userId) {
         log.debug("Добавление лайка: пользователь {} ставит лайк фильму {}", userId, filmId);
