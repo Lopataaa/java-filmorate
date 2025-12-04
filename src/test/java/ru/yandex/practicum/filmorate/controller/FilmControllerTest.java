@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Import;
 import ru.yandex.practicum.filmorate.dto.FilmCreateDto;
 import ru.yandex.practicum.filmorate.dto.FilmDto;
 import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
 import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
@@ -48,10 +49,16 @@ class FilmControllerTest {
     @DisplayName("Добавление фильма с невалидной датой релиза")
     public void addFilmInvalidReleaseDate() {
         // Given
-        FilmCreateDto filmDto = FilmCreateDto.builder().name("Old Film").description("Very old film").releaseDate(LocalDate.of(1890, 1, 1)).duration(90).mpaId(1).build();
+        FilmCreateDto filmDto = FilmCreateDto.builder()
+                .name("Old Film")
+                .description("Very old film")
+                .releaseDate(LocalDate.of(1890, 1, 1))
+                .duration(90)
+                .mpaId(1)
+                .build();
 
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> filmController.createFilm(filmDto));
+        // When & Then Заченила ValidationException на IllegalArgumentException
+        assertThrows(ValidationException.class, () -> filmController.createFilm(filmDto));
     }
 
     @Test
