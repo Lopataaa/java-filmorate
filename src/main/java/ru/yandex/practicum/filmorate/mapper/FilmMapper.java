@@ -27,8 +27,8 @@ public class FilmMapper {
                 .genres(film.getGenres() != null ?
                         film.getGenres().stream()
                                 .map(GenreMapper::toDto)
-                                .collect(Collectors.toSet()) : null)
-                .likes(null) // или загрузи лайки, если нужно
+                                .collect(Collectors.toList()) : null)  // Изменяем на Collectors.toList()
+                .likes(null)
                 .build();
     }
 
@@ -40,6 +40,4 @@ public class FilmMapper {
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
-
-    // метод toEntity(FilmCreateDto dto) — он больше не нужен
 }

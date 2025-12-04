@@ -15,6 +15,7 @@ import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -43,17 +44,21 @@ public class FilmService {
 
         Mpa mpa = null;
         if (dto.getMpa() != null && dto.getMpa().getId() != null) {
-            mpa = mpaStorage.getMpaRatingById(dto.getMpa().getId().intValue()).orElseThrow(() -> new NotFoundException("Недопустимый рейтинг MPA"));
+            mpa = mpaStorage.getMpaRatingById(dto.getMpa().getId().intValue())
+                    .orElseThrow(() -> new NotFoundException("Недопустимый рейтинг MPA"));
         }
 
-        Set<Genre> genres = new LinkedHashSet<>();
+        List<Genre> genres = new ArrayList<>();
         if (dto.getGenres() != null) {
-            // Сохраняем порядок из запроса, не сортируем
             for (var genreDto : dto.getGenres()) {
                 if (genreDto.getId() == null) continue;
-                Genre genre = genreStorage.getGenreById(genreDto.getId().intValue()).orElseThrow(() -> new NotFoundException("Недопустимый ID жанра: " + genreDto.getId()));
+                Genre genre = genreStorage.getGenreById(genreDto.getId().intValue())
+                        .orElseThrow(() -> new NotFoundException("Недопустимый ID жанра: " + genreDto.getId()));
                 genres.add(genre);
             }
+            genres = genres.stream()
+                    .distinct()
+                    .collect(Collectors.toList());
         }
 
         Film film = new Film();
@@ -68,23 +73,28 @@ public class FilmService {
     }
 
     public Film updateFilm(FilmUpdateDto dto) {
-        Film existing = filmStorage.getById(dto.getId()).orElseThrow(() -> new NotFoundException("Фильм с id " + dto.getId() + " не найден"));
+        Film existing = filmStorage.getById(dto.getId())
+                .orElseThrow(() -> new NotFoundException("Фильм с id " + dto.getId() + " не найден"));
 
         validateReleaseDate(dto.getReleaseDate());
 
         Mpa mpa = null;
         if (dto.getMpa() != null && dto.getMpa().getId() != null) {
-            mpa = mpaStorage.getMpaRatingById(dto.getMpa().getId().intValue()).orElseThrow(() -> new NotFoundException("Недопустимый рейтинг MPA"));
+            mpa = mpaStorage.getMpaRatingById(dto.getMpa().getId().intValue())
+                    .orElseThrow(() -> new NotFoundException("Недопустимый рейтинг MPA"));
         }
 
-        Set<Genre> genres = new LinkedHashSet<>();
+        List<Genre> genres = new ArrayList<>();
         if (dto.getGenres() != null) {
-            // Сохраняем порядок из запроса, не сортируем
             for (var genreDto : dto.getGenres()) {
                 if (genreDto.getId() == null) continue;
-                Genre genre = genreStorage.getGenreById(genreDto.getId().intValue()).orElseThrow(() -> new NotFoundException("Недопустимый ID жанра: " + genreDto.getId()));
+                Genre genre = genreStorage.getGenreById(genreDto.getId().intValue())
+                        .orElseThrow(() -> new NotFoundException("Недопустимый ID жанра: " + genreDto.getId()));
                 genres.add(genre);
             }
+            genres = genres.stream()
+                    .distinct()
+                    .collect(Collectors.toList());
         }
 
         existing.setName(dto.getName());
