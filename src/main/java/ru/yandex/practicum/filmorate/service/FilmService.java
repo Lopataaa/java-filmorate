@@ -110,7 +110,7 @@ public class FilmService {
     }
 
     public void addLike(int filmId, int userId) {
-        getFilmById(filmId); // проверка существования
+        getFilmById(filmId);
         filmStorage.addLike(filmId, userId);
     }
 
