@@ -18,15 +18,14 @@ public class GenreMapper {
                 .build();
     }
 
-    public Genre toEntity(GenreDto dto) {
+    public static Genre toEntity(GenreDto dto) {
         if (dto == null) {
             return null;
         }
 
-        Genre genre = new Genre();
-        genre.setId(dto.getId().intValue());
-        genre.setName(dto.getName());
-
-        return genre;
+        return Genre.builder()
+                .id(dto.getId())
+                .name(dto.getName())
+                .build();
     }
 }

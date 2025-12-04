@@ -18,15 +18,14 @@ public class MpaMapper {
                 .build();
     }
 
-    public Mpa toEntity(MpaDto dto) {
+    public static Mpa toEntity(MpaDto dto) {
         if (dto == null) {
             return null;
         }
 
-        Mpa mpa = new Mpa();
-        mpa.setId(dto.getId().intValue());
-        mpa.setName(dto.getName());
-
-        return mpa;
+        return Mpa.builder()
+                .id(dto.getId())
+                .name(dto.getName())
+                .build();
     }
 }
