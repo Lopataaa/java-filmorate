@@ -1,15 +1,10 @@
 package ru.yandex.practicum.filmorate.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -33,7 +28,7 @@ public class FilmCreateDto {
     private Integer duration;
 
     @NotNull(message = "MPA рейтинг не может быть null")
-    private int mpaId;
+    private Integer mpaId; //  было int, стало Integer
 
     private Set<Integer> genreIds;
 }

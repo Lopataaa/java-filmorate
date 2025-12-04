@@ -4,8 +4,6 @@ import ru.yandex.practicum.filmorate.dto.FilmDto;
 import ru.yandex.practicum.filmorate.dto.FilmCreateDto;
 import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.model.Genre;
-import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.mapper.FilmMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -45,39 +42,14 @@ public class FilmController {
 
     @PostMapping
     public FilmDto createFilm(@Valid @RequestBody FilmCreateDto filmCreateDto) {
-        Film film = filmMapper.toEntity(filmCreateDto);
-        Film createdFilm = filmService.createFilm(film);
+        Film createdFilm = filmService.createFilm(filmCreateDto);
         return filmMapper.toDto(createdFilm);
     }
 
     @PutMapping
     public FilmDto updateFilm(@Valid @RequestBody FilmUpdateDto filmUpdateDto) {
-        Film existingFilm = filmService.getFilmById(filmUpdateDto.getId());
-
-        existingFilm.setName(filmUpdateDto.getName());
-        existingFilm.setDescription(filmUpdateDto.getDescription());
-        existingFilm.setReleaseDate(filmUpdateDto.getReleaseDate());
-        existingFilm.setDuration(filmUpdateDto.getDuration());
-
-        if (filmUpdateDto.getMpaId() != 0) {
-            Mpa mpa = new Mpa();
-            mpa.setId(filmUpdateDto.getMpaId());
-            existingFilm.setMpa(mpa);
-        }
-
-        if (filmUpdateDto.getGenreIds() != null) {
-            Set<Genre> genres = filmUpdateDto.getGenreIds().stream()
-                    .map(genreId -> {
-                        Genre genre = new Genre();
-                        genre.setId(genreId);
-                        return genre;
-                    })
-                    .collect(Collectors.toSet());
-            existingFilm.setGenres(genres);
-        }
-
-        Film savedFilm = filmService.updateFilm(existingFilm);
-        return filmMapper.toDto(savedFilm);
+        Film updatedFilm = filmService.updateFilm(filmUpdateDto);
+        return filmMapper.toDto(updatedFilm);
     }
 
     @PutMapping("/{id}/like/{userId}")

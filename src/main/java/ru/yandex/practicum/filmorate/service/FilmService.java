@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.dto.FilmCreateDto;
+import ru.yandex.practicum.filmorate.dto.FilmUpdateDto;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
@@ -16,7 +18,6 @@ import ru.yandex.practicum.filmorate.storage.film.MpaDbStorage;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class FilmService {
@@ -53,104 +54,80 @@ public class FilmService {
         return film;
     }
 
-    public Film createFilm(Film film) {
-        log.debug("Создание нового фильма: {}", film.getName());
+    public Film createFilm(FilmCreateDto dto) {
+        log.debug("Создание нового фильма: {}", dto.getName());
 
-        // ВАЛИДАЦИЯ: дата релиза не может быть раньше 28 декабря 1895 года
-        if (film.getReleaseDate() != null &&
-                film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
+        if (dto.getReleaseDate() != null &&
+                dto.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
 
-        // Проверяем MPA
-        if (film.getMpa() != null && film.getMpa().getId() > 0) {
-            Mpa mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
-            film.setMpa(mpa);
-        } else {
-            film.setMpa(null);
+        Mpa mpa = null;
+        if (dto.getMpaId() != null && dto.getMpaId() > 0) {
+            mpa = mpaStorage.getMpaRatingById(dto.getMpaId())
+                    .orElseThrow(() -> new ValidationException("Недопустимый рейтинг MPA"));
         }
 
-        // Проверяем Genres и убираем дубликаты
-        Set<Genre> uniqueGenres = new HashSet<>();
-        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
-            for (Genre genre : film.getGenres()) {
-                if (genre.getId() > 0) {
-                    Genre fullGenre = genreStorage.getGenreById(genre.getId())
-                            .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + genre.getId() + " не найден"));
-                    uniqueGenres.add(fullGenre);
-                }
+        Set<Genre> genres = new LinkedHashSet<>();
+        if (dto.getGenreIds() != null) {
+            for (Integer id : dto.getGenreIds()) {
+                if (id == null || id <= 0) continue;
+                Genre g = genreStorage.getGenreById(id)
+                        .orElseThrow(() -> new ValidationException("Недопустимый ID жанра: " + id));
+                genres.add(g);
             }
-            // Сортируем по id для устранения дубликатов и порядка
-            List<Genre> sortedGenres = uniqueGenres.stream()
-                    .sorted(Comparator.comparingInt(Genre::getId))
-                    .collect(Collectors.toList());
-            film.setGenres(new HashSet<>(sortedGenres));
         }
 
-        Film createdFilm = filmStorage.create(film);
+        Film film = new Film();
+        film.setName(dto.getName());
+        film.setDescription(dto.getDescription());
+        film.setReleaseDate(dto.getReleaseDate());
+        film.setDuration(dto.getDuration());
+        film.setMpa(mpa);
+        film.setGenres(genres);
 
-        if (!uniqueGenres.isEmpty() && filmStorage instanceof FilmDbStorage) {
-            FilmDbStorage filmDbStorage = (FilmDbStorage) filmStorage;
-            for (Genre genre : uniqueGenres) {
-                filmDbStorage.addGenre(createdFilm.getId(), genre.getId());
-            }
-            filmDbStorage.loadGenresForFilms(List.of(createdFilm));
-        }
-
-        log.info("Создан новый фильм: '{}' (id: {})", createdFilm.getName(), createdFilm.getId());
-        return createdFilm;
+        Film saved = filmStorage.create(film);
+        log.info("Создан новый фильм: '{}' (id: {})", saved.getName(), saved.getId());
+        return saved;
     }
 
-    public Film updateFilm(Film film) {
-        log.debug("Обновление фильма с id {}", film.getId());
+    public Film updateFilm(FilmUpdateDto dto) {
+        log.debug("Обновление фильма с id {}", dto.getId());
 
-        Film existingFilm = filmStorage.getById(film.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Фильм с id " + film.getId() + " не найден"));
+        Film existing = filmStorage.getById(dto.getId())
+                .orElseThrow(() -> new ValidationException("Фильм с id " + dto.getId() + " не найден"));
 
-        if (film.getReleaseDate() != null &&
-                film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
+        if (dto.getReleaseDate() != null &&
+                dto.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
 
-        if (film.getMpa() != null && film.getMpa().getId() > 0) {
-            Mpa mpa = mpaStorage.getMpaRatingById(film.getMpa().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден"));
-            film.setMpa(mpa);
-        } else {
-            film.setMpa(null);
+        Mpa mpa = null;
+        if (dto.getMpaId() != null && dto.getMpaId() > 0) {
+            mpa = mpaStorage.getMpaRatingById(dto.getMpaId())
+                    .orElseThrow(() -> new ValidationException("Недопустимый рейтинг MPA"));
         }
 
-        Set<Genre> uniqueGenres = new HashSet<>();
-        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
-            for (Genre genre : film.getGenres()) {
-                if (genre.getId() > 0) {
-                    Genre fullGenre = genreStorage.getGenreById(genre.getId())
-                            .orElseThrow(() -> new IllegalArgumentException("Жанр с id " + genre.getId() + " не найден"));
-                    uniqueGenres.add(fullGenre);
-                }
+        Set<Genre> genres = new LinkedHashSet<>();
+        if (dto.getGenreIds() != null) {
+            for (Integer id : dto.getGenreIds()) {
+                if (id == null || id <= 0) continue;
+                Genre g = genreStorage.getGenreById(id)
+                        .orElseThrow(() -> new ValidationException("Недопустимый ID жанра: " + id));
+                genres.add(g);
             }
-            List<Genre> sortedGenres = uniqueGenres.stream()
-                    .sorted(Comparator.comparingInt(Genre::getId))
-                    .collect(Collectors.toList());
-            film.setGenres(new HashSet<>(sortedGenres));
-        } else {
-            film.setGenres(new HashSet<>());
         }
 
-        Film updatedFilm = filmStorage.update(film);
+        existing.setName(dto.getName());
+        existing.setDescription(dto.getDescription());
+        existing.setReleaseDate(dto.getReleaseDate());
+        existing.setDuration(dto.getDuration());
+        existing.setMpa(mpa);
+        existing.setGenres(genres);
 
-        if (filmStorage instanceof FilmDbStorage) {
-            FilmDbStorage filmDbStorage = (FilmDbStorage) filmStorage;
-            filmDbStorage.removeAllGenres(updatedFilm.getId());
-            for (Genre genre : uniqueGenres) {
-                filmDbStorage.addGenre(updatedFilm.getId(), genre.getId());
-            }
-            filmDbStorage.loadGenresForFilms(List.of(updatedFilm));
-        }
-
-        log.info("Обновлен фильм: '{}' (id: {})", updatedFilm.getName(), updatedFilm.getId());
-        return updatedFilm;
+        Film updated = filmStorage.update(existing);
+        log.info("Обновлен фильм: '{}' (id: {})", updated.getName(), updated.getId());
+        return updated;
     }
 
     public void addLike(int filmId, int userId) {
