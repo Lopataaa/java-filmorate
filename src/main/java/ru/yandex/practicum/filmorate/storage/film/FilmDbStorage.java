@@ -283,9 +283,11 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     public void loadGenresForFilms(List<Film> films) {
-        if (films.isEmpty()) return;
+        if (films == null || films.isEmpty()) return;
 
-        List<Integer> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
+        List<Integer> filmIds = films.stream()
+                .map(Film::getId)
+                .collect(Collectors.toList());
 
         String sql = "SELECT fg.film_id, g.id, g.name " + "FROM film_genres fg " + "JOIN genres g ON fg.genre_id = g.id " + "WHERE fg.film_id IN (" + String.join(",", Collections.nCopies(filmIds.size(), "?")) + ") " + "ORDER BY fg.film_id, g.id";
 
@@ -306,7 +308,7 @@ public class FilmDbStorage implements FilmStorage {
             if (genres != null) {
                 film.setGenres(new ArrayList<>(genres));
             } else {
-                film.setGenres(new ArrayList<>(genres));
+                film.setGenres(new ArrayList<>());
             }
         }
     }
