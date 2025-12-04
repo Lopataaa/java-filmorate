@@ -140,7 +140,7 @@ public class FilmDbStorage implements FilmStorage {
             }
         }
 
-        film.setGenres(new HashSet<>());
+        List<Genre> genres = new ArrayList<>();
         loadGenresForFilms(List.of(film));
 
         if (mpaId != null) {
@@ -262,7 +262,7 @@ public class FilmDbStorage implements FilmStorage {
             film.setMpa(null);
         }
 
-        film.setGenres(new HashSet<>());
+        List<Genre> genres = new ArrayList<>();
 
         return film;
     }
@@ -304,9 +304,9 @@ public class FilmDbStorage implements FilmStorage {
         for (Film film : films) {
             List<Genre> genres = genresByFilmId.get(film.getId());
             if (genres != null) {
-                film.setGenres(new LinkedHashSet<>(genres));
+                film.setGenres(new ArrayList<>(genres));
             } else {
-                film.setGenres(new LinkedHashSet<>());
+                film.setGenres(new ArrayList<>(genres));
             }
         }
     }
